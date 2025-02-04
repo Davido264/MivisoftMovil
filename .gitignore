@@ -1,0 +1,11 @@
+# Ignorar node_modules y archivos de compilación
+node_modules/
+android/app/build/
+android/app/build/outputs/apk/
+*.apk
+
+# Archivos de cache
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
