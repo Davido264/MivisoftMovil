@@ -1,0 +1,11 @@
+diff --git a/node_modules/react-native-view-shot/android/src/main/AndroidManifest.xml b/node_modules/react-native-view-shot/android/src/main/AndroidManifest.xml
+index 9a19275..4a2a6a4 100644
+--- a/node_modules/react-native-view-shot/android/src/main/AndroidManifest.xml
++++ b/node_modules/react-native-view-shot/android/src/main/AndroidManifest.xml
+@@ -1,5 +1,4 @@
+ 
+ <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+-          package="fr.greweb.reactnativeviewshot">
+-
++        >
+ </manifest>
