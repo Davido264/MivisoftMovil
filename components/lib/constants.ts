@@ -1,18 +1,89 @@
+export const CSS_COLORS = {
+  light: {
+    background: "hsl(0 0% 100%)",
+    foreground: "hsl(240 10% 4%)",
+    card: "hsl(187 10% 90%)",
+    cardForeground: "hsl(240 10% 4%)",
+    popover: "hsl(0 0% 100%)",
+    popoverForeground: "hsl(240 10% 4%)",
+    primary: "hsl(187 50% 53%)",
+    primaryForeground: "hsl(0 0% 98%)",
+    secondary: "hsl(240 100% 13%)",
+    secondaryForeground: "hsl(0 0% 98%)",
+    muted: "hsl(240 5% 96%)",
+    mutedForeground: "hsl(240 4% 46%)",
+    accent: "hsl(240 5% 96%)",
+    accentForeground: "hsl(240 6% 10%)",
+    border: "hsl(240 6% 90%)",
+    input: "hsl(240 6% 90%)",
+    ring: "hsl(240 6% 10%)",
+    ripple: "rgba(0,0,0,0.1)",
+
+    headerGradient: "hsl(187 50% 85%)",
+
+    destructive: "hsl(0 83% 50%)",
+    destructiveForeground: "hsl(0 0% 98%)",
+    destructiveMuted: "hsl(0 60% 90%)",
+    success: "hsl(110 84% 60%)",
+    successForeground: "hsl(0 0% 98%)",
+    successMuted: "hsl(110 60% 90%)",
+    warning: "hsl(50 84% 60%)",
+    warningForeground: "hsl(0 0% 98%)",
+    warningMuted: "hsl(50 60% 90%)",
+  },
+  dark: {
+    background: "hsl(0 0% 0%)",
+    foreground: "hsl(0 0% 98%)",
+    card: "hsl(180 5% 10%)",
+    cardForeground: "hsl(0 0% 98%)",
+    popover: "hsl(240 10% 4%)",
+    popoverForeground: "hsl(0 0% 98%)",
+    primary: "hsl(180 60% 70%)",
+    primaryForeground: "hsl(240 6% 10%)",
+    secondary: "hsl(229 70% 30%)",
+    secondaryForeground: "hsl(0 0% 98%)",
+    muted: "hsl(240 4% 16%)",
+    mutedForeground: "hsl(240 5% 65%)",
+    accent: "hsl(240 4% 16%)",
+    accentForeground: "hsl(0 0% 98%)",
+    border: "hsl(240 4% 16%)",
+    input: "hsl(240 4% 16%)",
+    ring: "hsl(240 5% 84%)",
+    ripple: "rgba(255,255,255,0.1)",
+
+    headerGradient: "hsl(180 50% 20%)",
+
+    destructive: "hsl(0 83% 50%)",
+    destructiveForeground: "hsl(0 0% 98%)",
+    destructiveMuted: "hsl(0 30% 20%)",
+    success: "hsl(110 84% 60%)",
+    successForeground: "hsl(0 0% 98%)",
+    successMuted: "hsl(110 30% 20%)",
+    warning: "hsl(50 84% 60%)",
+    warningForeground: "hsl(0 0% 98%)",
+    warningMuted: "hsl(50 30% 20%)",
+  },
+};
+
 export const NAV_THEME = {
-    light: {
-      background: 'hsl(0 0% 100%)', // background
-      border: 'hsl(240 5.9% 90%)', // border
-      card: 'hsl(0 0% 100%)', // card
-      notification: 'hsl(0 84.2% 60.2%)', // destructive
-      primary: 'hsl(240 5.9% 10%)', // primary
-      text: 'hsl(240 10% 3.9%)', // foreground
-    },
-    dark: {
-      background: 'hsl(240 10% 3.9%)', // background
-      border: 'hsl(240 3.7% 15.9%)', // border
-      card: 'hsl(240 10% 3.9%)', // card
-      notification: 'hsl(0 72% 51%)', // destructive
-      primary: 'hsl(0 0% 98%)', // primary
-      text: 'hsl(0 0% 98%)', // foreground
-    },
-  };
+  light: {
+    background: CSS_COLORS.light.background,
+    border: CSS_COLORS.light.ripple,
+    card: CSS_COLORS.light.card,
+    notification: CSS_COLORS.light.destructive,
+    primary: CSS_COLORS.light.primary,
+    seconday: CSS_COLORS.light.secondary,
+    text: CSS_COLORS.light.foreground,
+    textMuted: CSS_COLORS.light.muted,
+  },
+  dark: {
+    background: CSS_COLORS.dark.background,
+    border: CSS_COLORS.dark.ripple,
+    card: CSS_COLORS.dark.card,
+    notification: CSS_COLORS.dark.destructive,
+    primary: CSS_COLORS.dark.primary,
+    seconday: CSS_COLORS.dark.secondary,
+    text: CSS_COLORS.dark.foreground,
+    textMuted: CSS_COLORS.dark.muted,
+  },
+};
