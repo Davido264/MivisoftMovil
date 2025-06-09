@@ -20,20 +20,14 @@ export function useSharedTaskListStore(key: string) {
         set({ tasks: get().tasks.filter((t) => t.taskId !== taskId) }),
 
       addTaskObservation: (taskId, observation) => {
-        const current = get().tasks.find((t) => t.taskId !== taskId);
+        const current = get().tasks.find((t) => t.taskId === taskId);
         if (!current) {
           get().addTask({ taskId, observation, completedDate: new Date() });
           return;
         }
 
-        set({
-          tasks: get().tasks.map((t) => ({
-            ...t,
-            ...(t.taskId === taskId
-              ? { observation, completedDate: new Date() }
-              : {}),
-          })),
-        });
+        current.observation = observation;
+        set({ tasks: [...get().tasks] });
       },
     })),
   );
