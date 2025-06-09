@@ -29,8 +29,10 @@ export async function uploadTaskRegistries(
   for (const task of pending) {
     const toUpload = remotifyTaskRegistry(task);
 
-    const odooId = await getActivityRegistryOdooId(toUpload.activity_registry_id)
-    assert.notNull(odooId)
+    const odooId = await getActivityRegistryOdooId(
+      toUpload.activity_registry_id,
+    );
+    assert.notNull(odooId);
 
     toUpload.activity_registry_id = odooId;
     if (toUpload.id) {
@@ -39,7 +41,10 @@ export async function uploadTaskRegistries(
       toUpload.id = await createTaskRegistry(client, toUpload);
     }
 
-    await updateTaskRegistry(task.id, { odooId: toUpload.id, lastsync: new Date() });
+    await updateTaskRegistry(task.id, {
+      odooId: toUpload.id,
+      lastsync: new Date(),
+    });
   }
 
   logger.info("Subida exitosa");

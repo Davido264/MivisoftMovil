@@ -1,6 +1,9 @@
 import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { RemoteActivityRegistry } from "@/lib/odoo/act-registry";
-import { parseOdoo } from "../date";
+import { parseOdoo } from "@/lib/date";
+import { Logger } from "@/lib/logger";
+
+const logger = Logger.getLogger("");
 
 export type RemoteTaskRegistry = {
   id: number | undefined;
@@ -89,5 +92,19 @@ export async function createTaskRegistry(
   client: OdooJSONRpc,
   record: RemoteTaskRegistry,
 ) {
-  return await client.create(odooModelRegistry, record);
+  const existing = await client.search(odooModelRegistry, [
+    "&",
+    ["activity_registry_id", "=", record.activity_registry_id],
+    ["task_id", "=", record.task_id],
+  ]);
+
+  if (existing.length !== 1) {
+    logger.warn(
+      "No se ha encontrado una tarea o se encontraron varias, creando",
+    );
+    return await client.create(odooModelRegistry, record);
+  }
+
+  await client.update(odooModelRegistry, existing[0], record);
+  return existing[0];
 }
