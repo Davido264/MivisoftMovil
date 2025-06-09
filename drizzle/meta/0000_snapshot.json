@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0f4794a0-56ae-4c7b-868c-d6e76d4c43e8",
+  "id": "cd367f84-148c-4409-be8c-bab9b4df938c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "ts_actreg": {
@@ -1060,14 +1060,14 @@
           "name": "endLat",
           "type": "real",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "endLng": {
           "name": "endLng",
           "type": "real",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "observation": {

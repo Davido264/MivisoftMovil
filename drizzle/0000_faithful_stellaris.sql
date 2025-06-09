@@ -145,8 +145,8 @@ CREATE TABLE `ts_worktime` (
 	`startLat` real NOT NULL,
 	`startLng` real NOT NULL,
 	`endDate` integer,
-	`endLat` real NOT NULL,
-	`endLng` real NOT NULL,
+	`endLat` real,
+	`endLng` real,
 	`observation` text NOT NULL,
 	FOREIGN KEY (`userId`) REFERENCES `ts_users`(`id`) ON UPDATE no action ON DELETE cascade
 );

@@ -29,8 +29,8 @@ export const worktimeRegistries_table = sqliteTable(
     startLng: real().notNull(),
 
     endDate: integer({ mode: "timestamp_ms" }),
-    endLat: real().notNull(),
-    endLng: real().notNull(),
+    endLat: real(),
+    endLng: real(),
 
     observation: text().notNull(),
   },
