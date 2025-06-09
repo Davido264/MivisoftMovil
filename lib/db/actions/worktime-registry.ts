@@ -54,7 +54,7 @@ export function remotifyWorktimeRegistry(
   return {
     id: worktimeRegistry.odooId,
     user_id: worktimeRegistry.userId,
-    start_datetime: worktimeRegistry.startDate.toISOString(),
+    start_datetime: formatOdoo(worktimeRegistry.startDate),
     start_lat: worktimeRegistry.startLat,
     start_lng: worktimeRegistry.startLng,
     end_datetime:
