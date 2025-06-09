@@ -37,7 +37,6 @@ export async function reconciliateTaskRegistries(
             };
           }
 
-          const t = new Date();
           await insertTaskRegistries(
             [
               {
@@ -50,10 +49,9 @@ export async function reconciliateTaskRegistries(
                 observation: remote.observation,
                 taskId: remote.task_id,
                 activityRegistryId: activityRegistry.id,
-                lastmod: t,
-                lastsync: t,
               },
             ],
+            true,
             tx,
           );
 
@@ -81,7 +79,6 @@ export async function reconciliateTaskRegistries(
           continue;
         }
 
-        const t = new Date();
         await updateTaskRegistry(
           local.id,
           {
@@ -93,9 +90,8 @@ export async function reconciliateTaskRegistries(
             completed: remote.completed,
             observation: remote.observation,
             taskId: remote.task_id,
-            lastmod: t,
-            lastsync: t,
           },
+          true,
           tx,
         );
       }

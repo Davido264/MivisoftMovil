@@ -30,8 +30,8 @@ export async function uploadActivityRegistries(
   for (const act of pending) {
     const toUpload = remotifyActivityRegistry(act);
 
-    const odooId = await getJobRegistryOdooId(toUpload.job_registry_id)
-    assert.notNull(odooId)
+    const odooId = await getJobRegistryOdooId(toUpload.job_registry_id);
+    assert.notNull(odooId);
 
     toUpload.job_registry_id = odooId;
 
@@ -44,7 +44,7 @@ export async function uploadActivityRegistries(
     await db.transaction(
       async (tx) => {
         await setServerIdForActivityRegistryImage(act.id, `${toUpload.id}`, tx);
-        await updateActivityRegistry(act.id, { odooId: toUpload.id, lastsync: new Date() }, tx);
+        await updateActivityRegistry(act.id, { odooId: toUpload.id }, true, tx);
       },
       { behavior: transBehavior },
     );

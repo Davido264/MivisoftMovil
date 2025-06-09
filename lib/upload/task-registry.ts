@@ -41,10 +41,13 @@ export async function uploadTaskRegistries(
       toUpload.id = await createTaskRegistry(client, toUpload);
     }
 
-    await updateTaskRegistry(task.id, {
-      odooId: toUpload.id,
-      lastsync: new Date(),
-    });
+    await updateTaskRegistry(
+      task.id,
+      {
+        odooId: toUpload.id,
+      },
+      true,
+    );
   }
 
   logger.info("Subida exitosa");

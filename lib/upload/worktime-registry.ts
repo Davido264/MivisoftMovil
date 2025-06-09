@@ -36,7 +36,8 @@ export async function uploadWorktimeRegistry(
         );
         await updateWorktimeRegistry(
           pending[i].id,
-          { odooId: toUpdate.id, lastsync: new Date() },
+          { odooId: toUpdate.id },
+          true,
           tx,
         );
       }

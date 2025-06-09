@@ -10,6 +10,11 @@ import {
 import { users_table } from "@/lib/db/schema/user-session";
 import { removeSessions } from "@/lib/db/actions/users-session";
 
+export function dateObj(sync: boolean) {
+  const date = new Date();
+  return sync ? { lastmod: date, lastsync: date } : { lastmod: date };
+}
+
 export async function purgeStorage(scope: Database = db) {
   return scope.transaction(async (tx) => {
     await db.delete(worktimeRegistries_table);

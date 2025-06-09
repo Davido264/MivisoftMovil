@@ -7,16 +7,18 @@ import { sql } from "drizzle-orm";
 import { updateActivityRegistryPriority } from "./activity-registry";
 import { RemoteTaskRegistry } from "@/lib/odoo/task-registry";
 import { formatOdoo } from "@/lib/date";
+import { dateObj } from "@/lib/db/actions/utils";
 
 export async function insertTaskRegistries(
   insert: TaskRegistryInsert[],
+  sync: boolean = false,
   scope: Database = db,
 ) {
   return scope.transaction(
     async (tx) => {
       const result = await tx
         .insert(taskRegistries_table)
-        .values(insert)
+        .values(insert.map((i) => ({ ...i, ...dateObj(sync) })))
         .onConflictDoUpdate({
           target: taskRegistries_table.id,
           set: {
@@ -44,13 +46,14 @@ export async function insertTaskRegistries(
 export async function updateTaskRegistry(
   taskRegistryId: number,
   update: Partial<TaskRegistryInsert>,
+  sync: boolean = false,
   scope: Database = db,
 ) {
   return scope.transaction(
     async (tx) => {
       const result = await tx
         .update(taskRegistries_table)
-        .set(update)
+        .set({ ...update, ...dateObj(sync) })
         .where(sql`${taskRegistries_table.id} = ${taskRegistryId}`)
         .returning({ id: taskRegistries_table.id })
         .then((r) => r[0].id);

@@ -5,17 +5,19 @@ import {
   ActivityRegistryInsert,
   ActivityRegistrySelect,
 } from "@/lib/db/schema/activity-registry";
-import { updateJobRegistryPriority } from "./job-registry";
+import { updateJobRegistryPriority } from "@/lib/db/actions/job-registry";
 import { RemoteActivityRegistry } from "@/lib/odoo/act-registry";
+import { dateObj } from "@/lib/db/actions/utils";
 
 export function upsertActivityRegistry(
   insert: ActivityRegistryInsert,
+  sync: boolean = false,
   scope: Database = db,
 ) {
   return scope.transaction(async (tx) => {
     const returningId = tx
       .insert(activityRegistries_table)
-      .values(insert)
+      .values({ ...insert, ...dateObj(sync) })
       .onConflictDoUpdate({
         target: [
           activityRegistries_table.jobRegistryId,
@@ -41,12 +43,13 @@ export function upsertActivityRegistry(
 export function updateActivityRegistry(
   activityregistryid: number,
   update: Partial<ActivityRegistryInsert>,
+  sync: boolean = false,
   scope: Database = db,
 ) {
   return scope.transaction(async (tx) => {
     const returningId = await tx
       .update(activityRegistries_table)
-      .set({ ...update, lastmod: new Date() })
+      .set({ ...update, ...dateObj(sync) })
       .where(sql`${activityRegistries_table.id} = ${activityregistryid}`)
       .returning({ id: activityRegistries_table.id })
       .then((r) => r[0].id);

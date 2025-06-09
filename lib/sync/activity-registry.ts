@@ -40,7 +40,6 @@ export async function reconciliateActivityRegistries(
             };
           }
 
-          const t = new Date();
           await upsertActivityRegistry(
             {
               activityId: remote.activity_id,
@@ -50,9 +49,8 @@ export async function reconciliateActivityRegistries(
               userId: remote.uid,
               lng: remote.lng,
               lat: remote.lat,
-              lastmod: t,
-              lastsync: t,
             },
+            true,
             tx,
           );
           continue;
@@ -76,17 +74,19 @@ export async function reconciliateActivityRegistries(
           continue;
         }
 
-        const t = new Date();
-        await updateActivityRegistry(local.id, {
-          activityId: remote.activity_id,
-          observation: remote.observation,
-          odooId: remote.id,
-          userId: remote.uid,
-          lng: remote.lng,
-          lat: remote.lat,
-          lastmod: t,
-          lastsync: t,
-        });
+        await updateActivityRegistry(
+          local.id,
+          {
+            activityId: remote.activity_id,
+            observation: remote.observation,
+            odooId: remote.id,
+            userId: remote.uid,
+            lng: remote.lng,
+            lat: remote.lat,
+          },
+          true,
+          tx
+        );
       }
 
       await purgeDeletedActivityRegistries(

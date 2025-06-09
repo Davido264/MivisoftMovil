@@ -7,14 +7,16 @@ import {
 } from "@/lib/db/schema/job-registry";
 import { RemoteJobReg } from "@/lib/odoo/job-registry";
 import { sql } from "drizzle-orm";
+import { dateObj } from "./utils";
 
 export async function insertJobRegistry(
   insert: JobRegistryInsert,
+  sync: boolean = false,
   scope: Database = db,
 ) {
   return scope
     .insert(jobRegistries_table)
-    .values(insert)
+    .values({ ...insert, ...dateObj(sync) })
     .returning({ id: jobRegistries_table.id })
     .then((result) => result[0].id);
 }
@@ -22,11 +24,12 @@ export async function insertJobRegistry(
 export async function updateJobRegistry(
   jobRegistryId: number,
   update: Partial<JobRegistryInsert>,
+  sync: boolean = false,
   scope: Database = db,
 ) {
   return scope
     .update(jobRegistries_table)
-    .set({ ...update, lastmod: new Date() })
+    .set({ ...update, ...dateObj(sync) })
     .where(sql`${jobRegistries_table.id} = ${jobRegistryId}`);
 }
 

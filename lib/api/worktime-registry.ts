@@ -60,9 +60,9 @@ export async function registerWorktime(
 
         let id: number = 0;
         if (head !== undefined) {
-          await updateWorktimeRegistry(head.id, newEntry, tx);
+          await updateWorktimeRegistry(head.id, newEntry, false, tx);
         } else {
-          id = await insertWorktimeRegistry(newEntry, tx);
+          id = await insertWorktimeRegistry(newEntry, false, tx);
         }
 
         await storePhotos(

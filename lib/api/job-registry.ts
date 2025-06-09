@@ -40,6 +40,7 @@ export async function startJob(
             vehicleId,
             observation,
           },
+          false,
           tx,
         );
 
@@ -98,7 +99,7 @@ export async function finishJob(
           observation,
         };
         logger.info("Actualizando registro de trabajo");
-        await updateJobRegistry(jobRegistryId, update, tx);
+        await updateJobRegistry(jobRegistryId, update, false, tx);
 
         logger.info("Almacenando firma e imágenes");
         await storePhotos(tx, [

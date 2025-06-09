@@ -24,7 +24,6 @@ export async function reconciliate(
       ).then((result) => (result.length > 0 ? result[0] : undefined));
 
       if (local === undefined) {
-        const t = new Date();
         await insertWorktimeRegistry(
           {
             odooId: remote.id,
@@ -40,9 +39,8 @@ export async function reconciliate(
               : null,
             endLat: remote.end_lat,
             endLng: remote.end_lng,
-            lastmod: t,
-            lastsync: t,
           },
+          true,
           tx,
         );
         return;
@@ -63,7 +61,6 @@ export async function reconciliate(
         return;
       }
 
-      const t = new Date();
       await updateWorktimeRegistry(
         local.id,
         {
@@ -78,9 +75,8 @@ export async function reconciliate(
           endDate: remote.end_datetime ? parseOdoo(remote.end_datetime) : null,
           endLat: remote.end_lat,
           endLng: remote.end_lng,
-          lastmod: t,
-          lastsync: t,
         },
+        true,
         tx,
       );
     },

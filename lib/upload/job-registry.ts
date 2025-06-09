@@ -30,7 +30,7 @@ export async function uploadJobRegistries(client: OdooJSONRpc, userId: number) {
     await db.transaction(
       async (tx) => {
         await setSeverIdForJobRegistryImage(job.id, `${toUpload.id}`, tx);
-        await updateJobRegistry(job.id, { odooId: toUpload.id, lastsync: new Date() }, tx);
+        await updateJobRegistry(job.id, { odooId: toUpload.id }, true, tx);
       },
       { behavior: transBehavior },
     );

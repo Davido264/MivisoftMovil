@@ -45,6 +45,7 @@ export async function registerActivity(
             lng: location.longitude,
             userId: sessionData.uid,
           },
+          false,
           tx,
         );
 
@@ -75,6 +76,7 @@ export async function registerActivity(
             userId: sessionData.uid,
             observation: task.observation,
           })),
+          false,
           tx,
         );
       },

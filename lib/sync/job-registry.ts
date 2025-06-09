@@ -19,7 +19,6 @@ export async function reconciliateJobRegistries(
         const local = await getLocalJobRegistryFromOdooId(remote.id, tx);
 
         if (local === undefined) {
-          const t = new Date();
           await insertJobRegistry(
             {
               odooId: remote.id,
@@ -33,9 +32,8 @@ export async function reconciliateJobRegistries(
                 ? parseOdoo(remote.end_datetime)
                 : undefined,
               score: remote.score,
-              lastsync: t,
-              lastmod: t,
             },
+            true,
             tx,
           );
           continue;
@@ -59,22 +57,24 @@ export async function reconciliateJobRegistries(
           continue;
         }
 
-        const t = new Date();
-        await updateJobRegistry(local.id, {
-          odooId: remote.id,
-          itineraryId: remote.itinerary_id,
-          userId: remote.user_id,
-          observation: remote.observation,
-          companyId: remote.company_id,
-          startDate: parseOdoo(remote.start_datetime),
-          vehicleId: remote.fleet_vehicle_id,
-          endDate: remote.end_datetime
-            ? parseOdoo(remote.end_datetime)
-            : undefined,
-          score: remote.score,
-          lastsync: t,
-          lastmod: t,
-        });
+        await updateJobRegistry(
+          local.id,
+          {
+            odooId: remote.id,
+            itineraryId: remote.itinerary_id,
+            userId: remote.user_id,
+            observation: remote.observation,
+            companyId: remote.company_id,
+            startDate: parseOdoo(remote.start_datetime),
+            vehicleId: remote.fleet_vehicle_id,
+            endDate: remote.end_datetime
+              ? parseOdoo(remote.end_datetime)
+              : undefined,
+            score: remote.score,
+          },
+          true,
+          tx,
+        );
       }
 
       await purgeDeletedJobRegistries(

@@ -7,26 +7,29 @@ import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-reg
 import { sql } from "drizzle-orm";
 import { RemoteWorktimeRegistry } from "@/lib/odoo/worktime-registry";
 import { formatOdoo } from "@/lib/date";
+import { dateObj } from "./utils";
 
 export async function insertWorktimeRegistry(
   insert: WorktimeRegistryInsert,
+  sync: boolean = false,
   scope: Database = db,
 ) {
   return scope
     .insert(worktimeRegistries_table)
-    .values(insert)
+    .values({ ...insert, ...dateObj(sync) })
     .returning({ id: worktimeRegistries_table.id })
     .then((res) => res[0].id);
 }
 
 export async function updateWorktimeRegistry(
-  id: number | undefined,
+  id: number,
   update: Partial<WorktimeRegistryInsert>,
+  sync: boolean = false,
   scope: Database = db,
 ) {
   return scope
     .update(worktimeRegistries_table)
-    .set({ ...update, lastmod: new Date() })
+    .set({ ...update, ...dateObj(sync) })
     .returning({ id: worktimeRegistries_table.id })
     .then((res) => res[0].id);
 }
