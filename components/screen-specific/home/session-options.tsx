@@ -9,7 +9,7 @@ import { CircleEllipsis } from "lucide-react-native";
 import { View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { useGlobalStore } from "@/lib/store/application-state";
-import { pushAll, syncAll } from "@/lib/api/sync";
+import { syncAll } from "@/lib/api/sync";
 import { logout } from "@/lib/api/user-session";
 
 export default function Options() {
@@ -23,7 +23,6 @@ export default function Options() {
   const handleForceSync = async () => {
     modalRef.current?.dismiss();
     await syncAll(true);
-    await pushAll();
   };
 
   return (
@@ -66,7 +65,7 @@ export default function Options() {
             className="w-full"
             onPress={() => {
               modalRef.current?.dismiss();
-              router.push("/support")
+              router.push("/support");
             }}
           >
             <Text>Soporte</Text>
@@ -77,6 +76,7 @@ export default function Options() {
             onPress={async () => {
               modalRef.current?.dismiss();
               await logout();
+              router.dismissTo("/");
             }}
           >
             <Text className="text-destructive">Cerrar Sesión</Text>

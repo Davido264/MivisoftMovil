@@ -26,20 +26,13 @@ export async function removeSessions(scope: Database = db) {
 export async function removeUserSession(userId: number, scope: Database = db) {
   const currentSessionId = await getCurrentUserId();
 
-  scope
+  await scope
     .update(users_table)
     .set({ sid: "" })
     .where(sql`${users_table.id} = ${userId}`);
 
   if (currentSessionId === userId) {
     await AsyncStorage.removeItem(asyncStorageKey);
-  }
-
-  if (currentSessionId === userId) {
-    throw {
-      type: "SessionExpired",
-      message: "Sesión eliminada del almacenamiento",
-    };
   }
 }
 
@@ -90,8 +83,6 @@ export async function deleteNonRemoteUsers(
 
   await scope
     .delete(users_table)
-    .where(
-      sql`${users_table.id} NOT IN ${existingUserIds}`,
-    );
+    .where(sql`${users_table.id} NOT IN ${existingUserIds}`);
   return undefined;
 }
