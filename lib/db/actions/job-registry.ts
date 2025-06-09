@@ -60,7 +60,7 @@ export function remotifyJobRegistry(jobRegistry: JobRegistrySelect) {
     end_datetime:
       jobRegistry.endDate != null ? formatOdoo(jobRegistry.endDate) : undefined,
     observation: jobRegistry.observation,
-    score: jobRegistry.score,
+    score: jobRegistry.score != null ? jobRegistry.score : 0,
     fleet_vehicle_id: jobRegistry.vehicleId,
     company_id: jobRegistry.companyId,
   } as RemoteJobReg;
