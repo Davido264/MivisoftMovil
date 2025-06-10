@@ -15,7 +15,7 @@ export default function Index() {
 
   const userId = useSession((s) => s.uid);
   const { data, updatedAt } = useLiveQuery(getCurrentWorktimeRegistryForUser(userId));
-  const currentWorktime = data?.length > 0 ? data[0] : undefined;
+  const currentWorktime = data?.length > 0 && data[0].endDate != null ? data[0] : undefined;
 
   return (
     <View className="flex-1">

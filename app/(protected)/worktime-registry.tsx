@@ -28,7 +28,7 @@ export default function WorktimeForm() {
 
   const form = useAppForm({
     defaultValues: {
-      comment: (data?.length ?? 0) > 0 ? data[0].observation : "",
+      comment: (data?.length ?? 0) > 0 && data[0].endDate != null ? data[0].observation : "",
       photos: [] as string[],
     },
     validators: {

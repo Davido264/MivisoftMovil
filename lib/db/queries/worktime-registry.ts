@@ -10,7 +10,7 @@ export function getCurrentWorktimeRegistryForUser(
     .select()
     .from(worktimeRegistries_table)
     .where(
-      sql`${worktimeRegistries_table.userId} = ${userId} AND ${worktimeRegistries_table.endDate} IS NULL`,
+      sql`${worktimeRegistries_table.userId} = ${userId}`,
     )
     .orderBy(
       sql`${worktimeRegistries_table.day} DESC, ${worktimeRegistries_table.serial} DESC`,
