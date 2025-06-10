@@ -1,5 +1,0 @@
-- Itinerary
-- Start datetime
-- User
-- Vehicle
-- Company
