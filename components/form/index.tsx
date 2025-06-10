@@ -1,15 +1,15 @@
+import { Button } from "@/components/ui/button";
+import { ImagePicker as ImagePickerbase } from "@/components/ui/images";
+import LoadingIndicator from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
+import { Textarea } from "@/components/ui/textarea";
 import {
   createFormHook,
   createFormHookContexts,
   useStore,
 } from "@tanstack/react-form";
-import { ImagePicker as ImagePickerbase } from "@/components/ui/images";
-import { Textarea } from "@/components/ui/textarea";
-import { Text } from "@/components/ui/text";
-import { View, ActivityIndicator } from "react-native";
-import LoadingIndicator from "@/components/ui/loading-indicator";
-import { Button } from "@/components/ui/button";
 import { PropsWithChildren } from "react";
+import { ActivityIndicator, View } from "react-native";
 
 export const { fieldContext, useFieldContext, formContext, useFormContext } =
   createFormHookContexts();
@@ -62,7 +62,7 @@ function ImagePicker({ storeKey }: { storeKey: string }) {
   return (
     <ImagePickerbase
       fallback={<LoadingIndicator className={"h-60 w-60"} />}
-      mediaTypes={["images"]}
+      mediaTypes={["images","videos"]}
       quality={0.8}
       allowsMultipleSelection={true}
       onValueChange={field.handleChange}

@@ -1,21 +1,21 @@
-import { View } from "react-native";
-import { NetworkBadge } from "@/components/ui/network";
-import SyncIndicator from "@/components/screen-specific/home/sync-indicator";
-import GradientHeader from "@/components/screen-specific/home/gradient-header";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
 import DateBadge from "@/components/screen-specific/home/datetime-badge";
+import GradientHeader from "@/components/screen-specific/home/gradient-header";
 import JobRegistryOverView from "@/components/screen-specific/home/job-registry-overview";
 import NewWorktime from "@/components/screen-specific/home/new-worktime";
+import SyncIndicator from "@/components/screen-specific/home/sync-indicator";
 import LoadingIndicator from "@/components/ui/loading-indicator";
+import { NetworkBadge } from "@/components/ui/network";
+import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
 import { useSession } from "@/lib/store/application-state";
+import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { View } from "react-native";
 
 export default function Index() {
-  console.log("render home");
+  // console.log("render home");
 
   const userId = useSession((s) => s.uid);
   const { data, updatedAt } = useLiveQuery(getCurrentWorktimeRegistryForUser(userId));
-  const currentWorktime = data?.length > 0 && data[0].endDate != null ? data[0] : undefined;
+  const currentWorktime = data?.length > 0 && data[0].endDate == null ? data[0] : undefined;
 
   return (
     <View className="flex-1">

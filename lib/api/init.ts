@@ -1,18 +1,18 @@
-import { attemptAsync } from "@/lib/result";
-import { migrate } from "drizzle-orm/expo-sqlite/migrator";
-import db from "@/lib/db";
 import migrations from "@/drizzle/migrations";
-import { restoreAndValidateSession } from "@/lib/api/user-session";
-import { Logger } from "@/lib/logger";
-import { globalStore } from "@/lib/store/application-state";
-import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
-import { useEffect, useState } from "react";
-import { useFonts } from "expo-font";
-import { SplashScreen, useRouter } from "expo-router";
 import { syncAll } from "@/lib/api/sync";
-import Toast from "react-native-toast-message";
-import { AppState } from "react-native";
+import { restoreAndValidateSession } from "@/lib/api/user-session";
+import db from "@/lib/db";
 import { countPending } from "@/lib/db/queries/utils";
+import { Logger } from "@/lib/logger";
+import { attemptAsync } from "@/lib/result";
+import { globalStore } from "@/lib/store/application-state";
+import { migrate } from "drizzle-orm/expo-sqlite/migrator";
+import { useFonts } from "expo-font";
+import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
+import { SplashScreen, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { AppState } from "react-native";
+import Toast from "react-native-toast-message";
 
 const logger = Logger.getLogger("API::INIT");
 const applicationLogger = Logger.getLogger("APP");
@@ -66,9 +66,17 @@ export function useInit() {
       .finally(() => setLoading(false));
 
     const networkSubscription = addNetworkStateListener(
-      ({ isInternetReachable }) => {
-        globalStore.setState({ isOnline: isInternetReachable });
-        if (isInternetReachable === true) {
+      async (state) => {
+
+        const isOnline = await getNetworkStateAsync()
+          .then((r) => r.isInternetReachable)
+          .catch((r) => null);
+
+        globalStore.setState({
+          isOnline,
+        });
+
+        if (isOnline === true) {
           syncAll(true);
         }
       },
@@ -89,17 +97,13 @@ export function useInit() {
         if (
           state.lastError.type === "SessionExpired" ||
           state.lastError.type === "InvalidCredentials"
-        ) {
-          router.dismissTo("/login");
-        } else {
-          Toast.show({
-            type: "error",
-            text1: "Error",
-            text2: state.lastError.message,
-            swipeable: true,
-            autoHide: true,
-          });
-        }
+        ) Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: state.lastError.message,
+          swipeable: true,
+          autoHide: true,
+        });
       }
 
       if (state.lastMsg !== previousState.lastMsg && state.lastMsg != null) {
@@ -117,7 +121,7 @@ export function useInit() {
       memoryWarningEventSubscription.remove();
       unSubscribeGlobal();
     };
-  }, [router]);
+  }, []);
 
   return [ok, loading && !fontLoaded, error ?? fontError?.message] as
     | [true, boolean, undefined]

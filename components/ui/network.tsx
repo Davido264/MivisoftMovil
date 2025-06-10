@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { useNetworkState } from "expo-network";
 import { Text } from "@/components/ui/text";
-import { View } from "react-native";
 import { useGlobalStore } from "@/lib/store/application-state";
+import { useNetworkState } from "expo-network";
+import { View } from "react-native";
 
 type NetworkBadgeProps = {
   size: number;
@@ -14,7 +14,7 @@ export function NetworkBadge({ size }: NetworkBadgeProps) {
     isOnline === true
       ? "Conectado"
       : isOnline === false
-        ? "Desconactado"
+        ? "Desconectado"
         : "Comprobando...";
 
   const className =

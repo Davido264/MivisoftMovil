@@ -1,27 +1,26 @@
 import "@/global.css";
 
+import { NAV_THEME } from "@/components/lib/constants";
+import { useColorScheme } from "@/components/lib/useColorScheme";
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
   Theme,
+  ThemeProvider,
 } from "@react-navigation/native";
+import { PortalHost } from "@rn-primitives/portal";
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { NAV_THEME } from "@/components/lib/constants";
-import { useColorScheme } from "@/components/lib/useColorScheme";
-import { PortalHost } from "@rn-primitives/portal";
 
-import "react-native-reanimated";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { KeyboardProvider } from "react-native-keyboard-controller";
-import { ToastProvider } from "@/components/ui/toast";
-import { _expoAppConnection } from "@/lib/db";
-import { useSQLiteDevTools } from "expo-sqlite-devtools";
-import { useInit } from "@/lib/api/init";
 import ErrorScreen from "@/components/ui/error-screen";
-import { _internal_preventAutoHideAsync } from "expo-router/build/utils/splash";
+import { ToastProvider } from "@/components/ui/toast";
+import { useInit } from "@/lib/api/init";
+import { _expoAppConnection } from "@/lib/db";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { useSQLiteDevTools } from "expo-sqlite-devtools";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+import "react-native-reanimated";
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -59,8 +58,6 @@ export default function RootLayout() {
 
 function InnerLayout() {
   console.log("render root layout");
-
-  useSQLiteDevTools(_internal_preventAutoHideAsync);
 
   const [ok, loading, error] = useInit();
 

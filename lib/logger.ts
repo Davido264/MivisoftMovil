@@ -1,7 +1,7 @@
-import { defaultDatabaseDirectory, openDatabaseSync } from "expo-sqlite";
+import { File, Paths } from "expo-file-system/next";
 import * as Sharing from "expo-sharing";
+import { defaultDatabaseDirectory, openDatabaseSync } from "expo-sqlite";
 import { attempt, attemptAsync } from "./result";
-import { Paths, File } from "expo-file-system/next";
 import { globalStore } from "./store/application-state";
 
 export async function exportLogs() {
@@ -12,7 +12,7 @@ export async function exportLogs() {
   await exportLogger.info("Exportando logs...");
   await exportLogger.info("Snapshot del estado de la aplicacióñ", {
     ...globalStore.getState(),
-    odooCient: {},
+    odooClient: {},
   });
   const { error: transError } = await attempt(() =>
     db!.execSync("PRAGMA wal_checkpoint(FULL);"),

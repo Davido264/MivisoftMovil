@@ -3,5 +3,9 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
-  }
+  },
+  "emulator.androidColdBoot": true,
+  "emulator.androidExtraBootArgs": "C:\\Users\\TOSHIBA PC\\AppData\\Local\\Android\\Sdk\\emulator",
+  "emulator.emulatorPath": "C:\\Users\\TOSHIBA PC\\AppData\\Local\\Android\\Sdk\\emulator",
+  "emulator.emulatorPathWindows": "C:\\Users\\TOSHIBA PC\\AppData\\Local\\Android\\Sdk\\emulator"
 }

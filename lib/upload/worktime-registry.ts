@@ -1,13 +1,13 @@
 import db, { transBehavior } from "@/lib/db";
-import { Logger } from "@/lib/logger";
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
-import { bulkUploadWorktimeRegistries } from "@/lib/odoo/worktime-registry";
 import { setServerIdForWorktimeRegistryImage } from "@/lib/db/actions/photos";
 import {
   remotifyWorktimeRegistry,
   updateWorktimeRegistry,
 } from "@/lib/db/actions/worktime-registry";
 import { getAllPendingWorktimeRegistries } from "@/lib/db/queries/worktime-registry";
+import { Logger } from "@/lib/logger";
+import { bulkUploadWorktimeRegistries } from "@/lib/odoo/worktime-registry";
+import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 
 const logger = Logger.getLogger("UPLOAD::WORKTIME-REGISTRY");
 

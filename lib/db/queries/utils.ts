@@ -1,9 +1,9 @@
-import { sql } from "drizzle-orm";
 import db, { Database } from "@/lib/db";
-import { worktimeRegistries_table } from "@/lib/db/schema/worktime-registry";
-import { jobRegistries_table } from "@/lib/db/schema/job-registry";
 import { activityRegistries_table } from "@/lib/db/schema/activity-registry";
+import { jobRegistries_table } from "@/lib/db/schema/job-registry";
 import { taskRegistries_table } from "@/lib/db/schema/task-registry";
+import { worktimeRegistries_table } from "@/lib/db/schema/worktime-registry";
+import { sql } from "drizzle-orm";
 import { union } from "drizzle-orm/sqlite-core";
 import { photos_table } from "../schema/photos";
 
@@ -12,7 +12,7 @@ export function countPending(userId: number, scope: Database = db) {
     .select({ id: worktimeRegistries_table.id })
     .from(worktimeRegistries_table)
     .where(
-      sql`(${worktimeRegistries_table.odooId} IS NULL OR ${worktimeRegistries_table.lastsync} < ${worktimeRegistries_table.lastmod}) AND ${worktimeRegistries_table.userId} = ${userId}`,
+      sql`(${worktimeRegistries_table.lastsync} IS NULL OR ${worktimeRegistries_table.lastsync} < ${worktimeRegistries_table.lastmod}) AND ${worktimeRegistries_table.userId} = ${userId}`,
     );
 
   const jobRegistryPending = scope

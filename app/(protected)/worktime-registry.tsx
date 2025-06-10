@@ -1,18 +1,18 @@
-import { Text } from "@/components/ui/text";
-import { View } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { Send } from "@/components/lib/icons/Send";
 import { useAppForm } from "@/components/form";
 import {
   getLocation,
   validateExternalInputs,
 } from "@/components/form/external-inputs";
-import { useRouter } from "expo-router";
+import { Send } from "@/components/lib/icons/Send";
+import LoadingIndicator from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { registerWorktime } from "@/lib/api/worktime-registry";
+import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
 import { useSession } from "@/lib/store/application-state";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import LoadingIndicator from "@/components/ui/loading-indicator";
-import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
+import { useRouter } from "expo-router";
+import { View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 const imageStoreKey = "worktime-photos";
 
@@ -28,7 +28,7 @@ export default function WorktimeForm() {
 
   const form = useAppForm({
     defaultValues: {
-      comment: (data?.length ?? 0) > 0 && data[0].endDate != null ? data[0].observation : "",
+      comment: (data?.length ?? 0) > 0 && data[0].endDate == null ? data[0].observation : "",
       photos: [] as string[],
     },
     validators: {

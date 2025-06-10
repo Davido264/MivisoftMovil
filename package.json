@@ -78,7 +78,7 @@
     "@babel/core": "^7.25.2",
     "@types/react": "~19.0.10",
     "babel-plugin-inline-import": "^3.0.0",
-    "babel-plugin-react-compiler": "^19.1.0-rc.2",
+    "babel-preset-expo": "^13.2.0",
     "drizzle-kit": "^0.31.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~9.2.0",

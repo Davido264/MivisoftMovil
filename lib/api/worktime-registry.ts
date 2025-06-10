@@ -1,16 +1,16 @@
-import { Logger } from "@/lib/logger";
+import { computeYYYYMMDD, formatDateTime } from "@/lib/date";
 import db, { transBehavior } from "@/lib/db";
-import { WorktimeRegistryInsert } from "@/lib/db/schema/worktime-registry";
 import { storePhotos } from "@/lib/db/actions/photos";
-import { formatDateTime, computeYYYYMMDD } from "@/lib/date";
-import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
 import {
   insertWorktimeRegistry,
   updateWorktimeRegistry,
 } from "@/lib/db/actions/worktime-registry";
+import { countPending } from "@/lib/db/queries/utils";
+import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
+import { WorktimeRegistryInsert } from "@/lib/db/schema/worktime-registry";
+import { Logger } from "@/lib/logger";
 import { attemptAsync } from "@/lib/result";
 import { ApplicationState, globalStore } from "@/lib/store/application-state";
-import { countPending } from "@/lib/db/queries/utils";
 
 const logger = Logger.getLogger("API::WORKTIME");
 
@@ -43,8 +43,6 @@ export async function registerWorktime(
         } as WorktimeRegistryInsert;
 
         if (isOpen) {
-          newEntry.day = head.day;
-          newEntry.serial = head.serial;
           newEntry.endLat = location.latitude;
           newEntry.endLng = location.longitude;
           newEntry.endDate = date;
@@ -59,8 +57,8 @@ export async function registerWorktime(
         logger.info("Guardando registro de tiempo trabajado", newEntry);
 
         let id: number = 0;
-        if (head !== undefined) {
-          await updateWorktimeRegistry(head.id, newEntry, false, tx);
+        if (isOpen) {
+          id = await updateWorktimeRegistry(head.id, newEntry, false, tx);
         } else {
           id = await insertWorktimeRegistry(newEntry, false, tx);
         }

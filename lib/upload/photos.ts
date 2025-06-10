@@ -1,10 +1,10 @@
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
-import { File } from "expo-file-system/next";
 import db, { Database } from "@/lib/db";
 import { photos_table, PhotoSelect } from "@/lib/db/schema/photos";
-import { sql } from "drizzle-orm";
 import { Logger } from "@/lib/logger";
 import { ApplicationError } from "@/lib/result";
+import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
+import { sql } from "drizzle-orm";
+import { File } from "expo-file-system/next";
 
 const logger = Logger.getLogger("UPLOAD::PHOTO");
 
@@ -101,6 +101,7 @@ async function uploadPhoto(
   return fetch(`${client.url}/technical_support/upload`, {
     method: "POST",
     headers: {
+      "Content-Type": "multipart/form-data",
       Cookie: `session_id=${client.sessionId}`,
     },
     body: formData,

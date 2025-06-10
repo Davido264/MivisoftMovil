@@ -1,6 +1,6 @@
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
-import { parseOdoo, computeYYYYMMDD } from "@/lib/date";
 import assert from "@/lib/assert";
+import { computeYYYYMMDD, parseOdoo } from "@/lib/date";
+import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 
 export type RemoteWorktimeRegistry = {
   id: number;
@@ -87,5 +87,5 @@ export async function bulkUploadWorktimeRegistries(
   records: RemoteWorktimeRegistry[],
 ) {
   const result = await client.call_kw(odooModel, "bulk_upload", [records]);
-  return result[0] as number;
+  return result;
 }
