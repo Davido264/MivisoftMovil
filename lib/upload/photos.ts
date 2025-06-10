@@ -24,7 +24,9 @@ export async function uploadPhotos(client: OdooJSONRpc, scope: Database = db) {
   const photos = await scope
     .select()
     .from(photos_table)
-    .where(sql`${photos_table.odooId} IS NOT NULL AND ${photos_table.dirty} = 1`);
+    .where(
+      sql`${photos_table.odooId} IS NOT NULL AND ${photos_table.dirty} = 1`,
+    );
 
   const horphans = [] as string[];
   const toUpdate = [] as number[];
@@ -76,18 +78,25 @@ export async function uploadPhotos(client: OdooJSONRpc, scope: Database = db) {
     .where(sql`${photos_table.id} IN ${horphans} OR ${photos_table.dirty} = 0`);
 }
 
-async function uploadPhoto(client: OdooJSONRpc, photo: PhotoSelect, photof: File) {
+async function uploadPhoto(
+  client: OdooJSONRpc,
+  photo: PhotoSelect,
+  photof: File,
+) {
   const formData = new FormData();
 
-  formData.append(photo.isSign ? "sign" : "file", {
-     uri: photof.uri,
-     type: photof.type,
-     name: photo.name,
-  });
+  const contents = {
+    uri: photof.uri,
+    type: photof.type,
+    name: photo.name,
+  };
+  logger.info("Leyendo información de la imagen", contents);
+
+  // @ts-ignore
+  formData.append(photo.isSign ? "sign" : "file", contents);
+
   formData.append("model", photo.model);
   formData.append("identifier", photo.odooId!);
-
-  console.log(formData)
 
   return fetch(`${client.url}/technical_support/upload`, {
     method: "POST",
