@@ -30,6 +30,7 @@ export async function updateWorktimeRegistry(
   return scope
     .update(worktimeRegistries_table)
     .set({ ...update, ...dateObj(sync) })
+    .where(sql`${worktimeRegistries_table.id} = ${id}`)
     .returning({ id: worktimeRegistries_table.id })
     .then((res) => res[0].id);
 }
