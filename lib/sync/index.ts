@@ -26,7 +26,7 @@ import {
   applyRemoteTaskChange,
 } from "@/lib/sync/task-registry";
 import { formatDateTime, normalizedDate } from "@/lib/date";
-import { fetchWorktimeRegistry } from "@/lib/odoo/worktime-registry";
+import { fetchLatestWorktimeRegistry } from "@/lib/odoo/worktime-registry";
 import { reconciliate as reconliciateWorktimeRegistries } from "@/lib/sync/worktime-registry";
 import { OdooSession } from "@/lib/db/schema/user-session";
 import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
@@ -59,7 +59,7 @@ export async function syncRegistries(
 
   const [jobRegistries, worktimeRegistries] = await Promise.all([
     fetchJobRegistries(odooClient, maxAge),
-    fetchWorktimeRegistry(odooClient, sessionData.uid, sessionData.tz),
+    fetchLatestWorktimeRegistry(odooClient, sessionData.uid, sessionData.tz),
   ]);
 
   const [, , activityRegistries] = await Promise.all([

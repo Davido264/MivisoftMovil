@@ -23,23 +23,17 @@ export async function uploadWorktimeRegistry(
 
   logger.info("Subiendo registros pendientes");
   const toUpload = pending.map((i) => remotifyWorktimeRegistry(i));
-  const ids = await bulkUploadWorktimeRegistries(client, toUpload);
+  const registerId = await bulkUploadWorktimeRegistries(client, toUpload);
 
   await db.transaction(
     async (tx) => {
       for (let i = 0; i < pending.length; i++) {
-        const toUpdate = { ...pending[i], id: ids[i] };
         await setServerIdForWorktimeRegistryImage(
           pending[i].id,
-          `${toUpdate.id}`,
+          `${registerId}`,
           tx,
         );
-        await updateWorktimeRegistry(
-          pending[i].id,
-          { odooId: toUpdate.id },
-          true,
-          tx,
-        );
+        await updateWorktimeRegistry(pending[i].id, {}, true, tx);
       }
     },
     { behavior: transBehavior },

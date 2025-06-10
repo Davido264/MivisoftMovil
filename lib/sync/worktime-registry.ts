@@ -1,7 +1,7 @@
 import db, { transBehavior } from "@/lib/db";
 import { RemoteWorktimeRegistry } from "@/lib/odoo/worktime-registry";
 import { parseOdoo } from "@/lib/date";
-import { getLocalWorktimeRegistryFromOdooId } from "@/lib/db/queries/worktime-registry";
+import { getLocalWorktimeRegistryFromDaySerial } from "@/lib/db/queries/worktime-registry";
 import {
   insertWorktimeRegistry,
   updateWorktimeRegistry,
@@ -18,8 +18,10 @@ export async function reconciliate(
         return;
       }
 
-      const local = await getLocalWorktimeRegistryFromOdooId(
-        remote.id,
+      const local = await getLocalWorktimeRegistryFromDaySerial(
+        remote.day,
+        remote.serial,
+        remote.user_id,
         tx,
       ).then((result) => (result.length > 0 ? result[0] : undefined));
 
@@ -64,7 +66,6 @@ export async function reconciliate(
       await updateWorktimeRegistry(
         local.id,
         {
-          odooId: remote.id,
           day: remote.day,
           userId: remote.user_id,
           serial: remote.serial,

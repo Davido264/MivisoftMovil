@@ -20,7 +20,7 @@ export type RemoteWorktimeRegistry = {
 const odooModel = "technical_support.worktime_registry";
 const odooModelTw = "technical_support.time_window";
 
-export async function fetchWorktimeRegistry(
+export async function fetchLatestWorktimeRegistry(
   client: OdooJSONRpc,
   userId: number,
   timezone: string,
@@ -47,7 +47,6 @@ export async function fetchWorktimeRegistry(
     odooModelTw,
     [["worktime_registry_id", "=", wtId]],
     [
-      "id",
       "worktime_registry_id",
       "serial",
       "start_datetime",
@@ -70,7 +69,6 @@ export async function fetchWorktimeRegistry(
 
   return {
     day,
-    id: (tw as any).id,
     user_id: userId,
     serial: (tw as any).serial,
     start_datetime: (tw as any).start_datetime,
@@ -89,5 +87,5 @@ export async function bulkUploadWorktimeRegistries(
   records: RemoteWorktimeRegistry[],
 ) {
   const result = await client.call_kw(odooModel, "bulk_upload", [records]);
-  return result as number[];
+  return result[0] as number;
 }
