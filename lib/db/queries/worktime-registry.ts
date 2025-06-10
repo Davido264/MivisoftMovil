@@ -52,7 +52,7 @@ export function getAllPendingWorktimeRegistries(
     .select()
     .from(worktimeRegistries_table)
     .where(
-      sql`${worktimeRegistries_table.lastmod} > ${worktimeRegistries_table.lastsync}`,
+      sql`${worktimeRegistries_table.lastsync} IS NULL OR ${worktimeRegistries_table.lastmod} > ${worktimeRegistries_table.lastsync}`,
     )
     .orderBy(sql`${worktimeRegistries_table.lastmod} DESC`);
 }
