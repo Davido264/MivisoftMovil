@@ -62,7 +62,7 @@ function ImagePicker({ storeKey }: { storeKey: string }) {
   return (
     <ImagePickerbase
       fallback={<LoadingIndicator className={"h-60 w-60"} />}
-      mediaTypes={["images","videos"]}
+      mediaTypes={["images"]}
       quality={0.8}
       allowsMultipleSelection={true}
       onValueChange={field.handleChange}

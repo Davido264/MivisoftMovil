@@ -1,29 +1,29 @@
-import LoadingIndicator from "@/components/ui/loading-indicator";
-import { useSession } from "@/lib/store/application-state";
-import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { Text } from "@/components/ui/text";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { IdNamedList } from "@/components/ui/id-named-list";
-import { Diff } from "@/components/lib/icons/Diff";
-import { Images } from "@/components/lib/icons/Images";
 import { CheckCheck } from "@/components/lib/icons/CheckCheck";
 import { CircleFadingArrowUp } from "@/components/lib/icons/CircleFadingArrowUp";
-import { Button } from "@/components/ui/button";
-import { Link } from "expo-router";
-import { ScrollView, View } from "react-native";
+import { Diff } from "@/components/lib/icons/Diff";
 import { GitPullRequestClosed } from "@/components/lib/icons/GitPullRequestClosed";
-import { getAllPendingWorktimeRegistries } from "@/lib/db/queries/worktime-registry";
-import { getAllPendingTaskRegistries } from "@/lib/db/queries/task-registries";
-import { getAllPendingActivityRegistries } from "@/lib/db/queries/activity-registries";
-import { WorktimeRegistrySelect } from "@/lib/db/schema/worktime-registry";
-import { JobRegistrySelect } from "@/lib/db/schema/job-registry";
-import { ActivityRegistrySelect } from "@/lib/db/schema/activity-registry";
-import { TaskRegistrySelect } from "@/lib/db/schema/task-registry";
-import { remotifyWorktimeRegistry } from "@/lib/db/actions/worktime-registry";
-import { remotifyTaskRegistry } from "@/lib/db/actions/task-registry";
+import { Images } from "@/components/lib/icons/Images";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { IdNamedList } from "@/components/ui/id-named-list";
+import LoadingIndicator from "@/components/ui/loading-indicator";
+import { Text } from "@/components/ui/text";
 import { remotifyActivityRegistry } from "@/lib/db/actions/activity-registry";
 import { remotifyJobRegistry } from "@/lib/db/actions/job-registry";
+import { remotifyTaskRegistry } from "@/lib/db/actions/task-registry";
+import { remotifyWorktimeRegistry } from "@/lib/db/actions/worktime-registry";
+import { getAllPendingActivityRegistries } from "@/lib/db/queries/activity-registries";
 import { getAllPendingJobRegistries } from "@/lib/db/queries/job-registry";
+import { getAllPendingTaskRegistries } from "@/lib/db/queries/task-registries";
+import { getAllPendingWorktimeRegistries } from "@/lib/db/queries/worktime-registry";
+import { ActivityRegistrySelect } from "@/lib/db/schema/activity-registry";
+import { JobRegistrySelect } from "@/lib/db/schema/job-registry";
+import { TaskRegistrySelect } from "@/lib/db/schema/task-registry";
+import { WorktimeRegistrySelect } from "@/lib/db/schema/worktime-registry";
+import { useSession } from "@/lib/store/application-state";
+import { useLiveQuery } from "drizzle-orm/expo-sqlite";
+import { Link } from "expo-router";
+import { ScrollView, View } from "react-native";
 
 export default function Backlog() {
   const userId = useSession((session) => session.uid);
@@ -128,15 +128,129 @@ function PendingItem(item: PendingRegistryState) {
           </View>
         </CardHeader>
         <CardContent className="flex-col gap-2">
-          <DeltaView delta={item.delta} userName={userName} />
+          <DeltaTableView delta={item.delta} userName={userName} />
           {item.conflicting != null && (
-            <DeltaView delta={item.conflicting} userName={userName} />
+            <DeltaTableView delta={item.conflicting} userName={userName} />
           )}
         </CardContent>
       </Card>
     </View>
   );
 }
+
+
+function DeltaTableView({
+  delta,
+  userName,
+}: {
+  delta: Record<string, unknown>;
+  userName?: string;
+}) {
+
+  const deltaEntries = Object.entries(delta).filter(([key, value]) =>
+    value !== null && value !== undefined
+  );
+
+  console.log('Delta entries length:', deltaEntries.length);
+
+  return (
+    <View className="w-full flex-col gap-1">
+      <Text className="text-muted-foreground">{userName}</Text>
+
+      <View className="w-full bg-background rounded-md border border-border">
+
+        <View className="flex-row border-b border-border">
+          <View className="w-32 p-2 border-r border-border">
+            <Text className="text-sm font-medium text-muted-foreground">
+              Campo
+            </Text>
+          </View>
+          <View className="flex-1 p-2">
+            <Text className="text-sm font-medium text-muted-foreground">
+              Valor
+            </Text>
+          </View>
+        </View>
+
+
+        {deltaEntries.map(([key, value], index) => (
+          <View
+            key={key}
+            className={`flex-row ${index !== deltaEntries.length - 1 ? 'border-b border-border' : ''
+              }`}
+          >
+            {/* Columna Campo - Fija */}
+            <View className="w-32 p-2 border-r border-border">
+              <Text
+                className="text-sm"
+                style={{ fontFamily: "SpaceMono" }}
+              >
+                {key}
+              </Text>
+            </View>
+
+            {/* Columna Valor - Con scroll horizontal */}
+            <View className="flex-1">
+              <ScrollView
+                // horizontal
+                bounces={false}
+                showsHorizontalScrollIndicator={false}
+                style={{ maxHeight: 100 }} 
+              >
+                <ScrollView
+                  bounces={false}
+                  showsVerticalScrollIndicator={true}
+                  style={{ minWidth: 192 }} 
+                >
+                  <View className="p-2">
+                    <Text
+                      className="text-sm"
+                      style={{ fontFamily: "SpaceMono" }}
+                    >
+                      {formatValue(value)}
+                    </Text>
+                  </View>
+                </ScrollView>
+              </ScrollView>
+            </View>
+          </View>
+        ))}
+
+        {/* Mensaje si no hay datos */}
+        {deltaEntries.length === 0 && (
+          <View className="flex-row">
+            <View className="flex-1 p-4">
+              <Text className="text-sm text-muted-foreground text-center">
+                No hay cambios pendientes
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function formatValue(value: unknown): string {
+  let str = '';
+  if (value === null) str = 'null';
+  else if (value === undefined) str = 'undefined';
+  else if (typeof value === 'string') str = value;
+  else if (typeof value === 'number') str = value.toString();
+  else if (typeof value === 'boolean') str = value.toString();
+  else if (typeof value === 'object') str = JSON.stringify(value, null, 2);
+  else str = String(value);
+
+  return str.replace(/\n{2,}/g, '\n');
+}
+
+/**
+ 
+<DeltaView delta={item.delta} userName={userName} />
+          {item.conflicting != null && (
+            <DeltaView delta={item.conflicting} userName={userName} />
+          )}
+ */
 
 function DeltaView({
   delta,
@@ -172,9 +286,11 @@ function transform(
 
   let i = 0;
   for (const wtime of w) {
+    
+
     result.push({
       id: i++,
-      name: wtime.odooId ? `${wtime.odooId}` : `${wtime.id}L`,
+      name: wtime.odooId ? `Registro de jornada ${wtime.odooId}` : `Registro de jornada ${wtime.id}L`,
       worktimeRegistryId: wtime.id,
       delta: remotifyWorktimeRegistry(wtime),
       remote: wtime.lastsync != null && wtime.lastsync >= wtime.lastmod,
@@ -185,7 +301,7 @@ function transform(
   for (const job of j) {
     result.push({
       id: i++,
-      name: job.odooId ? `${job.odooId}` : `${job.id}L`,
+      name: job.odooId ? `Registro de trabajo ${job.odooId}` : `Registro de trabajo ${job.id}L`,
       jobRegistryId: job.id,
       delta: remotifyJobRegistry(job),
       remote: job.lastsync != null && job.lastsync >= job.lastmod,
@@ -196,7 +312,7 @@ function transform(
   for (const act of a) {
     result.push({
       id: i++,
-      name: act.odooId ? `${act.odooId}` : `${act.id}L`,
+      name: act.odooId ? `Registro de actividad ${act.odooId}` : `Registro de actividad ${act.id}L`,
       activityRegistryId: act.id,
       delta: remotifyActivityRegistry(act),
       remote: act.lastsync != null && act.lastsync >= act.lastmod,
@@ -207,7 +323,7 @@ function transform(
   for (const task of t) {
     result.push({
       id: i++,
-      name: task.odooId ? `${task.odooId}` : `${task.id}L`,
+      name: task.odooId ? `Registro de tarea ${task.odooId}` : `Registro de tarea ${task.id}L`,
       taskRegistryId: task.id,
       delta: remotifyTaskRegistry(task),
       remote: task.lastsync != null && task.lastsync >= task.lastmod,

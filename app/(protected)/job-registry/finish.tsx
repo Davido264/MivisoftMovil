@@ -1,21 +1,21 @@
 import { useAppForm } from "@/components/form";
-import { Send } from "@/components/lib/icons/Send";
 import {
   getLocation,
   validateExternalInputs,
 } from "@/components/form/external-inputs";
-import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { View } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { Text } from "@/components/ui/text";
-import { StartsRating } from "@/components/screen-specific/finish/starts-rating";
+import { Send } from "@/components/lib/icons/Send";
 import SignaturePad from "@/components/screen-specific/finish/signature-pad";
-import { useRef, useState } from "react";
-import ViewShot, { captureRef } from "react-native-view-shot";
-import { finishJob } from "@/lib/api/job-registry";
+import { StartsRating } from "@/components/screen-specific/finish/starts-rating";
+import { Button } from "@/components/ui/button";
 import { ImagePicker } from "@/components/ui/images";
 import LoadingIndicator from "@/components/ui/loading-indicator";
-import { Button } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { finishJob } from "@/lib/api/job-registry";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import { View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import ViewShot, { captureRef } from "react-native-view-shot";
 
 const imageStoreKey = "job-registry-finish-photos";
 const signStoreKey = "job-registry-finish-signature";
@@ -117,7 +117,7 @@ export default function FinishJobRegistry() {
         </form.Field>
       </View>
 
-      <View className="p-4 w-full gap-4 items-center">
+      <View className="py-4 px-6 w-full gap-4 items-center">
         <Button
           onPress={() => setUsePhoto(!usePhoto)}
           variant="outline"
