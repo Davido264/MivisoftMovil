@@ -32,7 +32,6 @@ const companyVehicleStoreKey = "company-vehicle-store";
 const itineraryStoreKey = "itinerary-store";
 
 export default function AllJobRegistries() {
-  console.log("render AllJobRegistries");
   const { data, error, updatedAt } = useLiveQuery(getAllJobRegistries());
   const { canEdit } = useLocalSearchParams<{ canEdit?: string }>();
 
@@ -132,9 +131,17 @@ function Filters({ setFilter }: { setFilter: _setFilterFn }) {
         (vehicleId !== 0 ? item.vehicleId === vehicleId : true) &&
         (itineraryId !== 0 ? item.itineraryId === itineraryId : true) &&
         (mine ? userid === item.userId : true) &&
-        (includeClosed ? true : item.endDate === null)
+        (includeClosed ? true : item.endDate === null),
     );
-  }, [itineraryId, companyId, vehicleId, mine, setFilter, userid, includeClosed]);
+  }, [
+    itineraryId,
+    companyId,
+    vehicleId,
+    mine,
+    setFilter,
+    userid,
+    includeClosed,
+  ]);
 
   return (
     <Accordion className="w-full px-4" collapsible type="single">
@@ -154,7 +161,10 @@ function Filters({ setFilter }: { setFilter: _setFilterFn }) {
             <Text>Sólo míos</Text>
           </View>
           <View className="flex-row gap-3">
-            <Checkbox checked={includeClosed} onCheckedChange={setIncludeClosed} />
+            <Checkbox
+              checked={includeClosed}
+              onCheckedChange={setIncludeClosed}
+            />
             <Text>Mostrar terminados</Text>
           </View>
           <View className="w-full items-end">

@@ -24,8 +24,6 @@ export default function StartJobRegistry() {
   const navigation = useNavigation();
   const router = useRouter();
 
-  console.log("render StartJobRegistry");
-
   useEffect(() => {
     navigation.setOptions({
       title: itineraryName,

@@ -57,8 +57,6 @@ export default function RootLayout() {
 }
 
 function InnerLayout() {
-  console.log("render root layout");
-
   const [ok, loading, error] = useInit();
 
   if (loading) {

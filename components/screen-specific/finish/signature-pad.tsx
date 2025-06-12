@@ -15,7 +15,6 @@ import { Separator } from "@/components/ui/separator";
 import { Ref } from "react";
 
 export default function SignaturePad({ ref }: { ref: Ref<ViewShot> }) {
-  console.log("render draw");
   const paths = useSharedValue(Skia.Path.Make());
   const pathd = useDerivedValue(() => paths.value.toSVGString(), []);
   const didUpdate = useSharedValue(false);
@@ -74,7 +73,13 @@ export default function SignaturePad({ ref }: { ref: Ref<ViewShot> }) {
       <GestureDetector gesture={panGesture}>
         <View className="w-full h-96 border-border border-2 rounded-lg overflow-hidden">
           <ViewShot ref={ref} style={{ flex: 1 }}>
-            <Canvas style={{ height: "100%", width: "100%", backgroundColor: "#cad5e2" }}>
+            <Canvas
+              style={{
+                height: "100%",
+                width: "100%",
+                backgroundColor: "#cad5e2",
+              }}
+            >
               <Path
                 path={pathd}
                 strokeWidth={4}

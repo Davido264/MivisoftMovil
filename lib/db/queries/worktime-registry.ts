@@ -9,9 +9,7 @@ export function getCurrentWorktimeRegistryForUser(
   return scope
     .select()
     .from(worktimeRegistries_table)
-    .where(
-      sql`${worktimeRegistries_table.userId} = ${userId}`,
-    )
+    .where(sql`${worktimeRegistries_table.userId} = ${userId}`)
     .orderBy(
       sql`${worktimeRegistries_table.day} DESC, ${worktimeRegistries_table.serial} DESC`,
     )

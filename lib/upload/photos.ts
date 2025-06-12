@@ -28,8 +28,6 @@ export async function uploadPhotos(client: OdooJSONRpc, scope: Database = db) {
       sql`${photos_table.odooId} IS NOT NULL AND ${photos_table.dirty} = 1`,
     );
 
-  console.log("Fotos a subir:", photos.length);
-
   const horphans = [] as number[];
   const toUpdate = [] as number[];
   const uristoDelete = new Map<number, File>();
@@ -45,7 +43,10 @@ export async function uploadPhotos(client: OdooJSONRpc, scope: Database = db) {
     for (const photo of batch) {
       const photof = new File(photo.uri);
       if (!photof.exists) {
-        logger.warn(`Foto no existe, se eliminará de la base de datos`, photo.uri);
+        logger.warn(
+          `Foto no existe, se eliminará de la base de datos`,
+          photo.uri,
+        );
         horphans.push(photo.id);
         continue;
       }
@@ -120,11 +121,10 @@ async function uploadPhoto(
     )
     .then((r) => {
       logger.info(`El servidor retornó ${r.status} ${r.statusText}`, {
-          photo,
-          response: r,
-        });
+        photo,
+        response: r,
+      });
       if (!r.ok) {
-        
         throw { type: "HTTPError", message: r.body } as ApplicationError;
       }
       return r;

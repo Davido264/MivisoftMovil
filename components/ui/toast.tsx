@@ -1,4 +1,8 @@
-import Toast, { BaseToast, ErrorToast, ToastConfig } from "react-native-toast-message";
+import Toast, {
+  BaseToast,
+  ErrorToast,
+  ToastConfig,
+} from "react-native-toast-message";
 import { useColorScheme } from "@/components/lib/useColorScheme";
 import { CSS_COLORS } from "../lib/constants";
 

@@ -85,7 +85,7 @@ export async function reconciliateActivityRegistries(
             lat: remote.lat,
           },
           true,
-          tx
+          tx,
         );
       }
 

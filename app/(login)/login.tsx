@@ -6,8 +6,6 @@ import { useAppForm } from "@/components/form";
 import { login } from "@/lib/api/user-session";
 
 export default function Login() {
-  console.log("render login");
-
   const submit = async ({
     value,
   }: {

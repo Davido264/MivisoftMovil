@@ -171,7 +171,6 @@ function GalleryPicker(props: ButtonProps) {
 }
 
 function ImageViewer() {
-  console.log("ImageViewer render");
   const context = useContext(ImagePickerContext);
   assert.notNull(context);
 

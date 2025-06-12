@@ -1,8 +1,6 @@
 import { Stack } from "expo-router";
 
 export default function StartJobFormLayout() {
-  console.log("render root layout for worktime form");
-
   return (
     <Stack>
       <Stack.Screen

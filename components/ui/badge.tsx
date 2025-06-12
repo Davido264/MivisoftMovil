@@ -1,37 +1,37 @@
-import * as Slot from '@rn-primitives/slot';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { View, ViewProps } from 'react-native';
-import { cn } from '@/components/lib/utils';
-import { TextClassContext } from '@/components/ui/text';
+import * as Slot from "@rn-primitives/slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import { View, ViewProps } from "react-native";
+import { cn } from "@/components/lib/utils";
+import { TextClassContext } from "@/components/ui/text";
 
 const badgeVariants = cva(
-  'items-center rounded-full border border-border px-2.5 py-0.5',
+  "items-center rounded-full border border-border px-2.5 py-0.5",
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary active:opacity-80',
-        secondary: 'border-transparent bg-secondary active:opacity-80',
-        destructive: 'border-transparent bg-destructive active:opacity-80',
-        outline: 'text-foreground',
+        default: "border-transparent bg-primary active:opacity-80",
+        secondary: "border-transparent bg-secondary active:opacity-80",
+        destructive: "border-transparent bg-destructive active:opacity-80",
+        outline: "text-foreground",
       },
     },
     defaultVariants: {
-      variant: 'default',
+      variant: "default",
     },
-  }
+  },
 );
 
-const badgeTextVariants = cva('text-xs font-semibold ', {
+const badgeTextVariants = cva("text-xs font-semibold ", {
   variants: {
     variant: {
-      default: 'text-primary-foreground',
-      secondary: 'text-secondary-foreground',
-      destructive: 'text-destructive-foreground',
-      outline: 'text-foreground',
+      default: "text-primary-foreground",
+      secondary: "text-secondary-foreground",
+      destructive: "text-destructive-foreground",
+      outline: "text-foreground",
     },
   },
   defaultVariants: {
-    variant: 'default',
+    variant: "default",
   },
 });
 
@@ -43,7 +43,10 @@ function Badge({ className, variant, asChild, ...props }: BadgeProps) {
   const Component = asChild ? Slot.View : View;
   return (
     <TextClassContext.Provider value={badgeTextVariants({ variant })}>
-      <Component className={cn(badgeVariants({ variant }), className)} {...props} />
+      <Component
+        className={cn(badgeVariants({ variant }), className)}
+        {...props}
+      />
     </TextClassContext.Provider>
   );
 }

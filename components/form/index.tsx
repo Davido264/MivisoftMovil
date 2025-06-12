@@ -63,7 +63,6 @@ function ImagePicker({ storeKey }: { storeKey: string }) {
     <ImagePickerbase
       fallback={<LoadingIndicator className={"h-60 w-60"} />}
       mediaTypes={["images"]}
-      quality={0.8}
       allowsMultipleSelection={true}
       onValueChange={field.handleChange}
       storeKey={storeKey}
@@ -89,13 +88,11 @@ function SubmitButton({
     state.isValid,
   ]);
 
-  console.log(form.state.errors)
-
   return (
     <>
       {form.state.errors.length !== 0 ? (
         <Text className="text-destructive text-sm text-ellipsis">
-          {form.state.errors.map(i => i.form).join(", ")}
+          {form.state.errors.map((i) => i.form).join(", ")}
         </Text>
       ) : (
         <></>

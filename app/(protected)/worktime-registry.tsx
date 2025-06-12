@@ -17,18 +17,19 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 const imageStoreKey = "worktime-photos";
 
 export default function WorktimeForm() {
-  console.log("render worktime form");
-
   const router = useRouter();
 
-  const userId = useSession(s => s.uid);
+  const userId = useSession((s) => s.uid);
   const { data, updatedAt } = useLiveQuery(
     getCurrentWorktimeRegistryForUser(userId),
   );
 
   const form = useAppForm({
     defaultValues: {
-      comment: (data?.length ?? 0) > 0 && data[0].endDate == null ? data[0].observation : "",
+      comment:
+        (data?.length ?? 0) > 0 && data[0].endDate == null
+          ? data[0].observation
+          : "",
       photos: [] as string[],
     },
     validators: {
@@ -66,7 +67,7 @@ export default function WorktimeForm() {
   });
 
   if (!updatedAt) {
-    return <LoadingIndicator className="flex-1 justify-center items-center" />
+    return <LoadingIndicator className="flex-1 justify-center items-center" />;
   }
 
   return (

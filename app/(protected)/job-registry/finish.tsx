@@ -21,8 +21,6 @@ const imageStoreKey = "job-registry-finish-photos";
 const signStoreKey = "job-registry-finish-signature";
 
 export default function FinishJobRegistry() {
-  console.log("render finish form");
-
   const { jobregid } = useLocalSearchParams<{
     jobregid: string;
   }>();

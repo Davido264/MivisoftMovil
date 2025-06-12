@@ -16,7 +16,6 @@ import ErrorScreen from "@/components/ui/error-screen";
 import { PhotoSelect } from "@/lib/db/schema/photos";
 
 export default function Gallery() {
-  console.log("Gallery render");
   const { storeKey, model, id } = useLocalSearchParams<{
     storeKey: string;
     model?: string;

@@ -11,7 +11,6 @@ import { useStore } from "zustand";
 import assert from "@/lib/assert";
 
 export default function SelectCompany() {
-  console.log("render select company");
   const { data, error, updatedAt } = useLiveQuery(getAllCompanies());
 
   if (!updatedAt) {
@@ -22,10 +21,7 @@ export default function SelectCompany() {
     <View className="flex-1 gap-2">
       <IdNamedList data={data} error={error?.message}>
         <IdNamedList.SearchField />
-        <IdNamedList.ElementList
-          ElementItem={ElementItem}
-          bottomSafe
-        />
+        <IdNamedList.ElementList ElementItem={ElementItem} bottomSafe />
       </IdNamedList>
     </View>
   );

@@ -14,7 +14,6 @@ const taskStoreKey = "register-job-registry-tasks";
 const imageStoreKey = "register-job-registry-photos";
 
 export default function RegisterActivity() {
-  console.log("render register activity");
   const { jobregid, itinerayid } = useLocalSearchParams<{
     jobregid?: string;
     itinerayid?: string;

@@ -7,7 +7,6 @@ import { Link } from "expo-router";
 import LoadingIndicator from "@/components/ui/loading-indicator";
 
 export default function NewJobRegistry() {
-  console.log("render NewJobRegistry");
   const { data, error, updatedAt } = useLiveQuery(getAllItineraries());
 
   if (!updatedAt) {
@@ -17,10 +16,7 @@ export default function NewJobRegistry() {
   return (
     <IdNamedList data={data} error={error?.message}>
       <IdNamedList.SearchField />
-      <IdNamedList.ElementList
-        ElementItem={ElementItem}
-        bottomSafe
-      />
+      <IdNamedList.ElementList ElementItem={ElementItem} bottomSafe />
     </IdNamedList>
   );
 }

@@ -16,8 +16,6 @@ import assert from "@/lib/assert";
 import { useSharedImageListStore } from "@/lib/store/image-list";
 
 export default function ActivityTasks() {
-  console.log("render activity tasks");
-
   const navParams = useLocalSearchParams<{
     actid: string;
     actName: string;

@@ -21,7 +21,10 @@ export async function getLocalActivityFromRegistryOdooId(
     .then((result) => (result.length > 0 ? result[0] : undefined));
 }
 
-export async function getActivityRegistryOdooId(id: number, scope: Database = db) {
+export async function getActivityRegistryOdooId(
+  id: number,
+  scope: Database = db,
+) {
   return scope
     .select({ odooid: activityRegistries_table.odooId })
     .from(activityRegistries_table)

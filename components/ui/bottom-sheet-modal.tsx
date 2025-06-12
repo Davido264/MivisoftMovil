@@ -10,10 +10,10 @@ import { CSS_COLORS } from "../lib/constants";
 
 const BottomSheetModal = forwardRef<
   ElementRef<typeof BSM>,
-  PropsWithChildren & {snapPoints?: string[] | number[]}
+  PropsWithChildren & { snapPoints?: string[] | number[] }
 >(({ children, ...props }, ref) => {
-  const {isDarkColorScheme} = useColorScheme();
-  const theme = isDarkColorScheme ? 'dark' : 'light';
+  const { isDarkColorScheme } = useColorScheme();
+  const theme = isDarkColorScheme ? "dark" : "light";
 
   const renderBackdrop = useCallback(
     (p: BottomSheetBackdropProps) => (
@@ -34,15 +34,13 @@ const BottomSheetModal = forwardRef<
       ref={ref}
       snapPoints={props.snapPoints || ["50%"]}
       enableDynamicSizing={false}
-      handleIndicatorStyle={{backgroundColor: CSS_COLORS[theme].foreground}}
-      backgroundStyle={{backgroundColor: CSS_COLORS[theme].card}}
+      handleIndicatorStyle={{ backgroundColor: CSS_COLORS[theme].foreground }}
+      backgroundStyle={{ backgroundColor: CSS_COLORS[theme].card }}
       enableOverDrag={false}
       enableContentPanningGesture={false}
       backdropComponent={renderBackdrop}
     >
-      <BottomSheetView className="bg-card pb-safe">
-        {children}
-      </BottomSheetView>
+      <BottomSheetView className="bg-card pb-safe">{children}</BottomSheetView>
     </BSM>
   );
 });

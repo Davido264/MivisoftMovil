@@ -12,7 +12,6 @@ import assert from "@/lib/assert";
 import { useSharedImageListStore } from "@/lib/store/image-list";
 
 export default function TaskObservation() {
-  console.log("render task observation");
   const { taskid, taskStoreKey, imageStoreKey } = useLocalSearchParams<{
     taskid: string;
     taskStoreKey?: string;

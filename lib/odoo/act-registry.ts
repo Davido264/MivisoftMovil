@@ -29,7 +29,15 @@ export async function fetchActivityRegistries(
   const registries = await client.searchRead(
     odooModelRegistry,
     [["job_registry_id", "in", jobregs.map((i) => i.id!)]],
-    ["id", "job_registry_id", "lat", "lng", "observation", "activity_id", "write_date"],
+    [
+      "id",
+      "job_registry_id",
+      "lat",
+      "lng",
+      "observation",
+      "activity_id",
+      "write_date",
+    ],
     { order: "create_date DESC" },
   );
 
@@ -48,7 +56,7 @@ export async function fetchActivityRegistries(
         lng: reg.lng as number,
         observation: reg.observation as string,
         uid: userMap.get(reg.job_registry_id[0] as number),
-        lastmod: parseOdoo(reg.write_date!)
+        lastmod: parseOdoo(reg.write_date!),
       }) as RemoteActivityRegistry,
   );
 }

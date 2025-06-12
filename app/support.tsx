@@ -31,7 +31,7 @@ export default function Support() {
       <Button
         variant="default"
         className="flex-row w-full gap-3 mt-auto"
-        onPress={async () => console.log(await exportLogs())}
+        onPress={async () => await exportLogs()}
       >
         <Bug className="color-primary-foreground" />
         <Text>Exportar logs</Text>

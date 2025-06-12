@@ -48,7 +48,6 @@ export async function exportLogs() {
   );
 
   attempt(() => file.delete());
-  console.log("shareResult", shareResult);
   if (shareResult.error != null) {
     globalStore.setState({ lastError: shareResult.error });
     return false;

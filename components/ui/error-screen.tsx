@@ -12,7 +12,9 @@ export default function ErrorScreen({ msg }: { msg?: string }) {
             <TriangleAlert className="color-foreground" size={120} />
           </View>
           <CardTitle className="justify-center">
-            <Text className="text-lg text-center font-bold">La aplicación ha llegado a un error irrecuperable</Text>
+            <Text className="text-lg text-center font-bold">
+              La aplicación ha llegado a un error irrecuperable
+            </Text>
           </CardTitle>
         </CardHeader>
         <CardContent>

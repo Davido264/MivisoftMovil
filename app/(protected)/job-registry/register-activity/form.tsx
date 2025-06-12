@@ -20,8 +20,6 @@ import assert from "@/lib/assert";
 import { useSharedImageListStore } from "@/lib/store/image-list";
 
 export default function RegisterActivityForm() {
-  console.log("render activity form");
-
   const { actid, actName, jobregid, actregid, taskStoreKey, imageStoreKey } =
     useLocalSearchParams<{
       actid: string;
@@ -41,7 +39,7 @@ export default function RegisterActivityForm() {
 
   const currentAvtivity = data?.length > 0 ? data[0] : undefined;
 
-  useSharedImageListStore(imageStoreKey)
+  useSharedImageListStore(imageStoreKey);
   const taskStore = useSharedTaskListStore(taskStoreKey);
   const tasks = useStore(taskStore, (state) => state.tasks);
 

@@ -65,22 +65,19 @@ export function useInit() {
       .then(SplashScreen.hideAsync)
       .finally(() => setLoading(false));
 
-    const networkSubscription = addNetworkStateListener(
-      async (state) => {
+    const networkSubscription = addNetworkStateListener(async (state) => {
+      const isOnline = await getNetworkStateAsync()
+        .then((r) => r.isInternetReachable)
+        .catch((r) => null);
 
-        const isOnline = await getNetworkStateAsync()
-          .then((r) => r.isInternetReachable)
-          .catch((r) => null);
+      globalStore.setState({
+        isOnline,
+      });
 
-        globalStore.setState({
-          isOnline,
-        });
-
-        if (isOnline === true) {
-          syncAll(true);
-        }
-      },
-    );
+      if (isOnline === true) {
+        syncAll(true);
+      }
+    });
 
     const memoryWarningEventSubscription = AppState.addEventListener(
       "memoryWarning",
@@ -97,13 +94,14 @@ export function useInit() {
         if (
           state.lastError.type === "SessionExpired" ||
           state.lastError.type === "InvalidCredentials"
-        ) Toast.show({
-          type: "error",
-          text1: "Error",
-          text2: state.lastError.message,
-          swipeable: true,
-          autoHide: true,
-        });
+        )
+          Toast.show({
+            type: "error",
+            text1: "Error",
+            text2: state.lastError.message,
+            swipeable: true,
+            autoHide: true,
+          });
       }
 
       if (state.lastMsg !== previousState.lastMsg && state.lastMsg != null) {

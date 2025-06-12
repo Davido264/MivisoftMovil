@@ -11,11 +11,12 @@ import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { View } from "react-native";
 
 export default function Index() {
-  // console.log("render home");
-
   const userId = useSession((s) => s.uid);
-  const { data, updatedAt } = useLiveQuery(getCurrentWorktimeRegistryForUser(userId));
-  const currentWorktime = data?.length > 0 && data[0].endDate == null ? data[0] : undefined;
+  const { data, updatedAt } = useLiveQuery(
+    getCurrentWorktimeRegistryForUser(userId),
+  );
+  const currentWorktime =
+    data?.length > 0 && data[0].endDate == null ? data[0] : undefined;
 
   return (
     <View className="flex-1">

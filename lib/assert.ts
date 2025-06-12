@@ -6,9 +6,14 @@ function assert(condition: boolean, msg: string | undefined = undefined) {
   }
 }
 
-assert.notNull = <T>(value: T, variableName: string | undefined = undefined): asserts value is NonNullable<T> => {
+assert.notNull = <T>(
+  value: T,
+  variableName: string | undefined = undefined,
+): asserts value is NonNullable<T> => {
   if (__DEV__ && (value == null || value === undefined)) {
-    throw new AssersionError(`passed value ${variableName ? `for ${variableName}` : ""}is null`);
+    throw new AssersionError(
+      `passed value ${variableName ? `for ${variableName}` : ""}is null`,
+    );
   }
 };
 

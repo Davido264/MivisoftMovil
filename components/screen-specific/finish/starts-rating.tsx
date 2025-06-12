@@ -15,7 +15,7 @@ export function StartsRating({
   return (
     <Card className="p-4 gap-3">
       <Text className="text-muted-foreground">Calificación</Text>
-      <Separator/>
+      <Separator />
       <View className="w-full flex-row items-center justify-center gap-3">
         <ActionableStarIcon
           active={rating >= 1}

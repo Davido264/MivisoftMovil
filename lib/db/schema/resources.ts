@@ -1,9 +1,4 @@
-import {
-  sqliteTable,
-  integer,
-  text,
-  index,
-} from "drizzle-orm/sqlite-core";
+import { sqliteTable, integer, text, index } from "drizzle-orm/sqlite-core";
 
 export const companies_table = sqliteTable("ts_company", {
   id: integer().primaryKey({ autoIncrement: true }),
@@ -51,7 +46,6 @@ export const tasks_table = sqliteTable(
   },
   (table) => [index("ts_task_activity_idx").on(table.activityId)],
 );
-
 
 export type CompanyInsert = typeof companies_table.$inferInsert;
 export type CompanySelect = typeof companies_table.$inferSelect;

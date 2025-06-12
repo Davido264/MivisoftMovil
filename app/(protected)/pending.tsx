@@ -138,7 +138,6 @@ function PendingItem(item: PendingRegistryState) {
   );
 }
 
-
 function DeltaTableView({
   delta,
   userName,
@@ -146,19 +145,15 @@ function DeltaTableView({
   delta: Record<string, unknown>;
   userName?: string;
 }) {
-
-  const deltaEntries = Object.entries(delta).filter(([key, value]) =>
-    value !== null && value !== undefined
+  const deltaEntries = Object.entries(delta).filter(
+    ([key, value]) => value !== null && value !== undefined,
   );
-
-  console.log('Delta entries length:', deltaEntries.length);
 
   return (
     <View className="w-full flex-col gap-1">
       <Text className="text-muted-foreground">{userName}</Text>
 
       <View className="w-full bg-background rounded-md border border-border">
-
         <View className="flex-row border-b border-border">
           <View className="w-32 p-2 border-r border-border">
             <Text className="text-sm font-medium text-muted-foreground">
@@ -172,19 +167,16 @@ function DeltaTableView({
           </View>
         </View>
 
-
         {deltaEntries.map(([key, value], index) => (
           <View
             key={key}
-            className={`flex-row ${index !== deltaEntries.length - 1 ? 'border-b border-border' : ''
-              }`}
+            className={`flex-row ${
+              index !== deltaEntries.length - 1 ? "border-b border-border" : ""
+            }`}
           >
             {/* Columna Campo - Fija */}
             <View className="w-32 p-2 border-r border-border">
-              <Text
-                className="text-sm"
-                style={{ fontFamily: "SpaceMono" }}
-              >
+              <Text className="text-sm" style={{ fontFamily: "SpaceMono" }}>
                 {key}
               </Text>
             </View>
@@ -195,12 +187,12 @@ function DeltaTableView({
                 // horizontal
                 bounces={false}
                 showsHorizontalScrollIndicator={false}
-                style={{ maxHeight: 100 }} 
+                style={{ maxHeight: 100 }}
               >
                 <ScrollView
                   bounces={false}
                   showsVerticalScrollIndicator={true}
-                  style={{ minWidth: 192 }} 
+                  style={{ minWidth: 192 }}
                 >
                   <View className="p-2">
                     <Text
@@ -232,16 +224,16 @@ function DeltaTableView({
 }
 
 function formatValue(value: unknown): string {
-  let str = '';
-  if (value === null) str = 'null';
-  else if (value === undefined) str = 'undefined';
-  else if (typeof value === 'string') str = value;
-  else if (typeof value === 'number') str = value.toString();
-  else if (typeof value === 'boolean') str = value.toString();
-  else if (typeof value === 'object') str = JSON.stringify(value, null, 2);
+  let str = "";
+  if (value === null) str = "null";
+  else if (value === undefined) str = "undefined";
+  else if (typeof value === "string") str = value;
+  else if (typeof value === "number") str = value.toString();
+  else if (typeof value === "boolean") str = value.toString();
+  else if (typeof value === "object") str = JSON.stringify(value, null, 2);
   else str = String(value);
 
-  return str.replace(/\n{2,}/g, '\n');
+  return str.replace(/\n{2,}/g, "\n");
 }
 
 /**
@@ -286,11 +278,11 @@ function transform(
 
   let i = 0;
   for (const wtime of w) {
-    
-
     result.push({
       id: i++,
-      name: wtime.odooId ? `Registro de jornada ${wtime.odooId}` : `Registro de jornada ${wtime.id}L`,
+      name: wtime.odooId
+        ? `Registro de jornada ${wtime.odooId}`
+        : `Registro de jornada ${wtime.id}L`,
       worktimeRegistryId: wtime.id,
       delta: remotifyWorktimeRegistry(wtime),
       remote: wtime.lastsync != null && wtime.lastsync >= wtime.lastmod,
@@ -301,7 +293,9 @@ function transform(
   for (const job of j) {
     result.push({
       id: i++,
-      name: job.odooId ? `Registro de trabajo ${job.odooId}` : `Registro de trabajo ${job.id}L`,
+      name: job.odooId
+        ? `Registro de trabajo ${job.odooId}`
+        : `Registro de trabajo ${job.id}L`,
       jobRegistryId: job.id,
       delta: remotifyJobRegistry(job),
       remote: job.lastsync != null && job.lastsync >= job.lastmod,
@@ -312,7 +306,9 @@ function transform(
   for (const act of a) {
     result.push({
       id: i++,
-      name: act.odooId ? `Registro de actividad ${act.odooId}` : `Registro de actividad ${act.id}L`,
+      name: act.odooId
+        ? `Registro de actividad ${act.odooId}`
+        : `Registro de actividad ${act.id}L`,
       activityRegistryId: act.id,
       delta: remotifyActivityRegistry(act),
       remote: act.lastsync != null && act.lastsync >= act.lastmod,
@@ -323,7 +319,9 @@ function transform(
   for (const task of t) {
     result.push({
       id: i++,
-      name: task.odooId ? `Registro de tarea ${task.odooId}` : `Registro de tarea ${task.id}L`,
+      name: task.odooId
+        ? `Registro de tarea ${task.odooId}`
+        : `Registro de tarea ${task.id}L`,
       taskRegistryId: task.id,
       delta: remotifyTaskRegistry(task),
       remote: task.lastsync != null && task.lastsync >= task.lastmod,

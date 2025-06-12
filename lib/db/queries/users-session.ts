@@ -1,6 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sql } from "drizzle-orm";
-import { users_table, asyncStorageKey, OdooSession } from "@/lib/db/schema/user-session";
+import {
+  users_table,
+  asyncStorageKey,
+  OdooSession,
+} from "@/lib/db/schema/user-session";
 import db, { Database } from "@/lib/db";
 
 export async function getCurrentUserId() {

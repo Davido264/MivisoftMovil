@@ -11,7 +11,6 @@ import { useStore } from "zustand";
 import assert from "@/lib/assert";
 
 export default function SelectVehicle() {
-  console.log("render select vehicle");
   const { storeKey } = useLocalSearchParams<{ storeKey: string }>();
   assert.notNull(storeKey);
 
@@ -28,10 +27,7 @@ export default function SelectVehicle() {
     <View className="flex-1 gap-2">
       <IdNamedList data={data} error={error?.message}>
         <IdNamedList.SearchField />
-        <IdNamedList.ElementList
-          ElementItem={ElementItem}
-          bottomSafe
-        />
+        <IdNamedList.ElementList ElementItem={ElementItem} bottomSafe />
       </IdNamedList>
     </View>
   );

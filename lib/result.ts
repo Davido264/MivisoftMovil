@@ -54,7 +54,7 @@ export async function attemptAsync<T>(
 
 export function transformError(e: any): ApplicationError {
   if (e instanceof AssersionError) {
-    return { type: "AssersionError", message: e.message }
+    return { type: "AssersionError", message: e.message };
   }
 
   if (
