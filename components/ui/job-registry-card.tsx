@@ -20,6 +20,7 @@ import { Link } from "expo-router";
 import { LinkProps } from "expo-router/build/link/Link";
 import { JobRegistryState } from "@/lib/db/queries/job-registry";
 import { Badge } from "@/components/ui/badge";
+import { NotebookPen } from "@/components/lib/icons/NotebookPen"
 
 const JobRegistryCardContext = createContext<Partial<JobRegistryState> | null>(
   null,
@@ -53,8 +54,9 @@ JobRegistryCard.Unit = Unit;
 JobRegistryCard.Progress = JobProgress;
 JobRegistryCard.Score = Score;
 JobRegistryCard.Actions = Actions;
+JobRegistryCard.ObservationFooter = ObservationFooter;
 
-function Header() {
+function Header({observationsHref}: {observationsHref?: LinkProps["href"]}) {
   const jobReg = useCardContext();
   assert.notNull(jobReg.startDate, "jobReg.startDate");
 
@@ -62,10 +64,18 @@ function Header() {
     <CardHeader className="gap-4">
       <View className="flex-row items-center justify-between">
         <CardTitle>Registro {jobReg.serverId ?? `${jobReg.id}L`}</CardTitle>
-        {jobReg.endDate != null && (
-          <Badge variant="secondary">
-            <Text>Terminado</Text>
-          </Badge>
+        {jobReg.endDate != null ? (
+          <View className="h-10 flex-row items-center">
+            <Badge variant="secondary">
+              <Text>Terminado</Text>
+            </Badge>
+          </View>
+        ) : observationsHref && (
+            <Link href={observationsHref} asChild>
+              <Button variant="ghost" size="icon" aria-label="Observaciones">
+                <NotebookPen className="color-foreground" size={16} />
+              </Button>
+          </Link>
         )}
       </View>
       <View>
@@ -172,19 +182,33 @@ function Score() {
 type ActionsProps = {
   endHref: LinkProps["href"];
   registryHref: LinkProps["href"];
+  canFinish: boolean,
 };
 
-function Actions({ endHref, registryHref }: ActionsProps) {
+function Actions({ endHref, registryHref, canFinish = true }: ActionsProps) {
   return (
     <CardFooter className="justify-between gap-3">
       <Link href={endHref} asChild>
-        <Button variant="secondary" className="flex-1">
+        <Button variant="secondary" className="flex-1" disabled={!canFinish}>
           <Text>Terminar</Text>
         </Button>
       </Link>
       <Link href={registryHref} asChild>
         <Button variant="default" className="flex-1">
           <Text>Registro</Text>
+        </Button>
+      </Link>
+    </CardFooter>
+  );
+}
+
+function ObservationFooter({ href }: { href: LinkProps["href"] }) {
+  return (
+    <CardFooter className="justify-center">
+      <Link href={href} asChild>
+        <Button variant="default" className="flex-1 flex-row justify-center gap-2">
+          <NotebookPen className="color-primary-foreground" size={20} />
+          <Text>Observaciones</Text>
         </Button>
       </Link>
     </CardFooter>

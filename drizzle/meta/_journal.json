@@ -8,6 +8,41 @@
       "when": 1749481747507,
       "tag": "0000_faithful_stellaris",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1750176570816,
+      "tag": "0001_workable_rocket_raccoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1750355553789,
+      "tag": "0002_fuzzy_kinsey_walden",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1750358507704,
+      "tag": "0003_old_menace",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1750362827686,
+      "tag": "0004_workable_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1750364155221,
+      "tag": "0005_lazy_ozymandias",
+      "breakpoints": true
     }
   ]
 }

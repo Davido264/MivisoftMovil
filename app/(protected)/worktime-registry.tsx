@@ -6,6 +6,7 @@ import {
 import { Send } from "@/components/lib/icons/Send";
 import LoadingIndicator from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
+import { syncAll } from "@/lib/api/sync";
 import { registerWorktime } from "@/lib/api/worktime-registry";
 import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
 import { useSession } from "@/lib/store/application-state";
@@ -59,8 +60,12 @@ export default function WorktimeForm() {
         return;
       }
 
+      const isClosing = data[0].endDate == null
       const ok = await registerWorktime(coords, value.comment, value.photos);
       if (ok) {
+        if (isClosing) {
+          queueMicrotask(() => syncAll())
+        }
         router.dismissTo("/");
       }
     },

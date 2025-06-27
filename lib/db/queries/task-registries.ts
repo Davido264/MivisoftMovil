@@ -14,6 +14,21 @@ export async function getLocalTaskRegistryFromOdooId(
     .then((result) => (result.length > 0 ? result[0] : undefined));
 }
 
+export async function getTaskRegistryForActivityRegistryAndTask(
+  activityRegistryId: number,
+  taskId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select()
+    .from(taskRegistries_table)
+    .where(
+      sql`${taskRegistries_table.activityRegistryId} = ${activityRegistryId} AND ${taskRegistries_table.taskId} = ${taskId}`,
+    )
+    .limit(1)
+    .then((result) => (result.length > 0 ? result[0] : undefined));
+}
+
 export function getAllPendingTaskRegistries(
   userId: number,
   scope: Database = db,

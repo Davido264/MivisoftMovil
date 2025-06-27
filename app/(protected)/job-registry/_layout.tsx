@@ -20,6 +20,11 @@ export default function StartJobFormLayout() {
       <Stack.Screen name="new/form" options={{ headerShown: true }} />
 
       <Stack.Screen
+        name="observation"
+        options={{ title: "Observaciones", headerShown: true }}
+      />
+
+      <Stack.Screen
         name="select-company"
         options={{
           title: "Seleccionar Companía",

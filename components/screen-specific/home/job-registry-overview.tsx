@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowUpRight } from "@/components/lib/icons/ArrowUpRight";
 import { JobRegistryCard } from "@/components/ui/job-registry-card";
 import { ClipboardCheck } from "@/components/lib/icons/ClipboardCheck";
-import { Link } from "expo-router";
+import { Link, LinkProps } from "expo-router";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { getLatestOpenJobRegistryForUser } from "@/lib/db/queries/job-registry";
 import { useSession } from "@/lib/store/application-state";
@@ -17,7 +17,7 @@ export default function JobRegistryOverView() {
     <>
       <View className="w-full px-4 py-2">
         <View className="w-full items-center justify-center p-2 gap-2">
-          <View className="w-full h-96">
+          <View className="w-full h-[350]">
             <JobRegistryOverViewInternal />
           </View>
           <Link
@@ -76,9 +76,14 @@ function JobRegistryOverViewInternal() {
     );
   }
 
+  const observationHref = {
+    pathname: "/job-registry/observation",
+    params: { jobRegistryId: item.id.toString() },
+  } as LinkProps["href"]
+
   return (
     <JobRegistryCard jobReg={item}>
-      <JobRegistryCard.Header />
+      <JobRegistryCard.Header observationsHref={observationHref} />
       <CardContent className="gap-2">
         <JobRegistryCard.Itinerary />
         <JobRegistryCard.Company />
@@ -87,6 +92,7 @@ function JobRegistryOverViewInternal() {
       </CardContent>
       <Separator className="mb-4" />
       <JobRegistryCard.Actions
+        canFinish={item.completedActivities !== 0}
         endHref={{
           pathname: "/job-registry/finish",
           params: { jobregid: item.id.toString() },

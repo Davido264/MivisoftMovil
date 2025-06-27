@@ -7,12 +7,14 @@ import {
   updateWorktimeRegistry,
 } from "@/lib/db/actions/worktime-registry";
 import assert from "@/lib/assert";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "@/lib/result";
 
-export async function reconciliate(
+export function reconciliate(
   remote: RemoteWorktimeRegistry | undefined,
   userId: number,
 ) {
-  return db.transaction(
+  const r = db.transaction(
     async (tx) => {
       if (remote === undefined) {
         return;
@@ -82,5 +84,9 @@ export async function reconciliate(
       );
     },
     { behavior: transBehavior },
+  );
+
+  return ResultAsync.fromPromise(r, (e) =>
+    transformError(e, "Error al actualizar registros de jornadas"),
   );
 }

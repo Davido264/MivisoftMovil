@@ -1,0 +1,1 @@
+ALTER TABLE `ts_worktime_job_registry` ADD `dirty` integer DEFAULT 1 NOT NULL;

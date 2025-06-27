@@ -11,8 +11,10 @@ import { ImagePicker } from "@/components/ui/images";
 import LoadingIndicator from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
 import { finishJob } from "@/lib/api/job-registry";
+import { syncAll } from "@/lib/api/sync";
+import { getActivityRegistryCount } from "@/lib/db/queries/activity-registries";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import ViewShot, { captureRef } from "react-native-view-shot";
@@ -83,10 +85,26 @@ export default function FinishJobRegistry() {
       );
 
       if (ok) {
+        queueMicrotask(() => syncAll())
         router.dismissTo("/");
       }
     },
   });
+
+  const [loading, activityCount] = useActivityCount(Number(jobregid ?? 0));
+
+  if (loading) {
+    return <LoadingIndicator className="flex-1 justify-center items-center" />
+  }
+
+  if (activityCount === 0) {
+    return (
+      <Redirect href={{
+        pathname: "/job-registry/register-activity",
+        params: { jobregid },
+      }} />
+    )
+  }
 
   if (!jobregid) {
     return <Redirect href="/job-registry/all" />;
@@ -164,4 +182,18 @@ export default function FinishJobRegistry() {
       </View>
     </KeyboardAwareScrollView>
   );
+}
+
+function useActivityCount(jobRegistryId: number) {
+  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getActivityRegistryCount(jobRegistryId).then((c) => {
+      setLoading(false)
+      setCount(c)
+    });
+  }, [jobRegistryId]);
+
+  return [loading, count] as [boolean, number];
 }

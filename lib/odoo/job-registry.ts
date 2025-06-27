@@ -1,5 +1,7 @@
 import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { formatOdoo, parseOdoo } from "@/lib/date";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "@/lib/result";
 
 export type RemoteJobReg = {
   id?: number;
@@ -14,9 +16,33 @@ export type RemoteJobReg = {
   lastmod: Date;
 };
 
-const odooModel = "technical_support.job_registry";
+export function fetchJobRegistries(client: OdooJSONRpc, maxAge: Date) {
+  return ResultAsync.fromPromise(
+    _internalFetchJobRegistries(client, maxAge),
+    (e) => transformError(e, "Error al obtener registros de trabajos"),
+  );
+}
 
-export async function fetchJobRegistries(client: OdooJSONRpc, maxAge: Date) {
+export function writeJobRegistry(
+  client: OdooJSONRpc,
+  id: number,
+  record: RemoteJobReg,
+) {
+  return ResultAsync.fromPromise(
+    _internalWriteJobRegistry(client, id, record),
+    (e) => transformError(e, "Error al actualizar registro de trabajo", record),
+  );
+}
+
+export function createJobRegistry(client: OdooJSONRpc, record: RemoteJobReg) {
+  return ResultAsync.fromPromise(
+    _internalCreateJobRegistry(client, record),
+    (e) => transformError(e, "Error al crear registro de trabajo", record),
+  );
+}
+
+const odooModel = "technical_support.job_registry";
+async function _internalFetchJobRegistries(client: OdooJSONRpc, maxAge: Date) {
   const registries = await client.searchRead(
     odooModel,
     [["create_date", ">", formatOdoo(maxAge)]],
@@ -52,26 +78,24 @@ export async function fetchJobRegistries(client: OdooJSONRpc, maxAge: Date) {
   );
 }
 
-export async function writeJobRegistry(
+async function _internalWriteJobRegistry(
   client: OdooJSONRpc,
   id: number,
   record: RemoteJobReg,
 ) {
-  handleScoreString(record);
-  return await client.update(odooModel, id, record);
+  await client.update(odooModel, id, {
+    ...record,
+    score: record.score ? `${record.score}` : undefined,
+  });
+  return id;
 }
 
-export async function createJobRegistry(
+async function _internalCreateJobRegistry(
   client: OdooJSONRpc,
   record: RemoteJobReg,
 ) {
-  handleScoreString(record);
-  return await client.create(odooModel, record);
-}
-
-function handleScoreString(record: RemoteJobReg) {
-  if ("score" in record) {
-    // @ts-ignore
-    record.score = `${record.score}`;
-  }
+  return await client.create(odooModel, {
+    ...record,
+    score: record.score ? `${record.score}` : undefined,
+  });
 }

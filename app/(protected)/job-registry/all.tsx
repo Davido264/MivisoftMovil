@@ -8,7 +8,7 @@ import { JobRegistryCard } from "@/components/ui/job-registry-card";
 import { CardContent } from "@/components/ui/card";
 import { useSession } from "@/lib/store/application-state";
 import { useSharedCompanyVehicleStore } from "@/lib/store/company-vehicle";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, LinkProps } from "expo-router";
 import { View } from "react-native";
 import { useEffect, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -73,10 +73,15 @@ function ElementItem({
   const userId = useSession((session) => session.uid);
   const actionable = userId === item.userId && canEdit;
 
+  const observationHref = {
+    pathname: "/job-registry/observation",
+    params: { jobRegistryId: item.id.toString() },
+  } as LinkProps["href"]
+
   return (
     <View className="p-4">
       <JobRegistryCard jobReg={item}>
-        <JobRegistryCard.Header />
+        <JobRegistryCard.Header observationsHref={observationHref} />
         <CardContent>
           <JobRegistryCard.Itinerary />
           <JobRegistryCard.Company />
@@ -87,8 +92,9 @@ function ElementItem({
             <JobRegistryCard.Progress />
           )}
         </CardContent>
-        {actionable && item.endDate == null && (
+        {actionable && item.endDate == null ? (
           <JobRegistryCard.Actions
+            canFinish={item.completedActivities !== 0}
             endHref={{
               pathname: "/job-registry/finish",
               params: { jobregid: item.id.toString() },
@@ -100,6 +106,10 @@ function ElementItem({
                 itinerayid: item.itineraryId.toString(),
               },
             }}
+          />
+        ) : (
+          <JobRegistryCard.ObservationFooter
+            href={observationHref}
           />
         )}
       </JobRegistryCard>

@@ -1,0 +1,1271 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "18ba9004-e7ea-40ef-acc6-02e17a57c916",
+  "prevId": "a9db39f6-236d-4642-8f49-c0cc58dfc0ad",
+  "tables": {
+    "ts_actreg": {
+      "name": "ts_actreg",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "odooId": {
+          "name": "odooId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "jobRegistryId": {
+          "name": "jobRegistryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "activityId": {
+          "name": "activityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lastsync": {
+          "name": "lastsync",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastmod": {
+          "name": "lastmod",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "lat": {
+          "name": "lat",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lng": {
+          "name": "lng",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "observation": {
+          "name": "observation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "NULL"
+        }
+      },
+      "indexes": {
+        "ts_actreg_odooId_unique": {
+          "name": "ts_actreg_odooId_unique",
+          "columns": [
+            "odooId"
+          ],
+          "isUnique": true
+        },
+        "ts_actreg_odooidx": {
+          "name": "ts_actreg_odooidx",
+          "columns": [
+            "odooId"
+          ],
+          "isUnique": false
+        },
+        "ts_actreg_jobregidx": {
+          "name": "ts_actreg_jobregidx",
+          "columns": [
+            "jobRegistryId"
+          ],
+          "isUnique": false
+        },
+        "ts_actreg_actidx": {
+          "name": "ts_actreg_actidx",
+          "columns": [
+            "activityId"
+          ],
+          "isUnique": false
+        },
+        "ts_actreg_act_jobregidx": {
+          "name": "ts_actreg_act_jobregidx",
+          "columns": [
+            "activityId",
+            "jobRegistryId"
+          ],
+          "isUnique": false
+        },
+        "ts_actreg_lastmodidx": {
+          "name": "ts_actreg_lastmodidx",
+          "columns": [
+            "lastmod"
+          ],
+          "isUnique": false
+        },
+        "ts_photos_userid": {
+          "name": "ts_photos_userid",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "ts_actreg_jobRegistryId_activityId_unique": {
+          "name": "ts_actreg_jobRegistryId_activityId_unique",
+          "columns": [
+            "jobRegistryId",
+            "activityId"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "ts_actreg_userId_ts_users_id_fk": {
+          "name": "ts_actreg_userId_ts_users_id_fk",
+          "tableFrom": "ts_actreg",
+          "tableTo": "ts_users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_actreg_jobRegistryId_ts_jobreg_id_fk": {
+          "name": "ts_actreg_jobRegistryId_ts_jobreg_id_fk",
+          "tableFrom": "ts_actreg",
+          "tableTo": "ts_jobreg",
+          "columnsFrom": [
+            "jobRegistryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_actreg_activityId_ts_activity_id_fk": {
+          "name": "ts_actreg_activityId_ts_activity_id_fk",
+          "tableFrom": "ts_actreg",
+          "tableTo": "ts_activity",
+          "columnsFrom": [
+            "activityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_jobreg": {
+      "name": "ts_jobreg",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "odooId": {
+          "name": "odooId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "itineraryId": {
+          "name": "itineraryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vehicleId": {
+          "name": "vehicleId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "companyId": {
+          "name": "companyId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lastsync": {
+          "name": "lastsync",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastmod": {
+          "name": "lastmod",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "observation": {
+          "name": "observation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "ts_jobreg_odooId_unique": {
+          "name": "ts_jobreg_odooId_unique",
+          "columns": [
+            "odooId"
+          ],
+          "isUnique": true
+        },
+        "ts_jobreg_server_idx": {
+          "name": "ts_jobreg_server_idx",
+          "columns": [
+            "odooId"
+          ],
+          "isUnique": false
+        },
+        "ts_jobreg_company_idx": {
+          "name": "ts_jobreg_company_idx",
+          "columns": [
+            "companyId"
+          ],
+          "isUnique": false
+        },
+        "ts_jobreg_vehicle_idx": {
+          "name": "ts_jobreg_vehicle_idx",
+          "columns": [
+            "vehicleId"
+          ],
+          "isUnique": false
+        },
+        "ts_jobreg_lastmod_idx": {
+          "name": "ts_jobreg_lastmod_idx",
+          "columns": [
+            "vehicleId"
+          ],
+          "isUnique": false
+        },
+        "ts_jobreg_user_idx": {
+          "name": "ts_jobreg_user_idx",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ts_jobreg_userId_ts_users_id_fk": {
+          "name": "ts_jobreg_userId_ts_users_id_fk",
+          "tableFrom": "ts_jobreg",
+          "tableTo": "ts_users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_jobreg_itineraryId_ts_itinerary_id_fk": {
+          "name": "ts_jobreg_itineraryId_ts_itinerary_id_fk",
+          "tableFrom": "ts_jobreg",
+          "tableTo": "ts_itinerary",
+          "columnsFrom": [
+            "itineraryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_jobreg_vehicleId_ts_vehicles_id_fk": {
+          "name": "ts_jobreg_vehicleId_ts_vehicles_id_fk",
+          "tableFrom": "ts_jobreg",
+          "tableTo": "ts_vehicles",
+          "columnsFrom": [
+            "vehicleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_jobreg_companyId_ts_company_id_fk": {
+          "name": "ts_jobreg_companyId_ts_company_id_fk",
+          "tableFrom": "ts_jobreg",
+          "tableTo": "ts_company",
+          "columnsFrom": [
+            "companyId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_photos": {
+      "name": "ts_photos",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "jobRegistryId": {
+          "name": "jobRegistryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "activityRegistryId": {
+          "name": "activityRegistryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "worktimeRegistryId": {
+          "name": "worktimeRegistryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "uri": {
+          "name": "uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "odooId": {
+          "name": "odooId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "null"
+        },
+        "isSign": {
+          "name": "isSign",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": false
+        },
+        "dirty": {
+          "name": "dirty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": true
+        }
+      },
+      "indexes": {
+        "ts_photos_job_idx": {
+          "name": "ts_photos_job_idx",
+          "columns": [
+            "jobRegistryId"
+          ],
+          "isUnique": false
+        },
+        "ts_photos_act_idx": {
+          "name": "ts_photos_act_idx",
+          "columns": [
+            "activityRegistryId"
+          ],
+          "isUnique": false
+        },
+        "ts_photos_dirty_idx": {
+          "name": "ts_photos_dirty_idx",
+          "columns": [
+            "dirty"
+          ],
+          "isUnique": false
+        },
+        "ts_photos_dirty_userid_idx": {
+          "name": "ts_photos_dirty_userid_idx",
+          "columns": [
+            "dirty",
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ts_photos_userId_ts_users_id_fk": {
+          "name": "ts_photos_userId_ts_users_id_fk",
+          "tableFrom": "ts_photos",
+          "tableTo": "ts_users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_photos_jobRegistryId_ts_jobreg_id_fk": {
+          "name": "ts_photos_jobRegistryId_ts_jobreg_id_fk",
+          "tableFrom": "ts_photos",
+          "tableTo": "ts_jobreg",
+          "columnsFrom": [
+            "jobRegistryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_photos_activityRegistryId_ts_actreg_id_fk": {
+          "name": "ts_photos_activityRegistryId_ts_actreg_id_fk",
+          "tableFrom": "ts_photos",
+          "tableTo": "ts_actreg",
+          "columnsFrom": [
+            "activityRegistryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_photos_worktimeRegistryId_ts_worktime_id_fk": {
+          "name": "ts_photos_worktimeRegistryId_ts_worktime_id_fk",
+          "tableFrom": "ts_photos",
+          "tableTo": "ts_worktime",
+          "columnsFrom": [
+            "worktimeRegistryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_activity": {
+      "name": "ts_activity",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "itineraryId": {
+          "name": "itineraryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "ts_activity_itineraryidx": {
+          "name": "ts_activity_itineraryidx",
+          "columns": [
+            "itineraryId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ts_activity_itineraryId_ts_itinerary_id_fk": {
+          "name": "ts_activity_itineraryId_ts_itinerary_id_fk",
+          "tableFrom": "ts_activity",
+          "tableTo": "ts_itinerary",
+          "columnsFrom": [
+            "itineraryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_company": {
+      "name": "ts_company",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_itinerary": {
+      "name": "ts_itinerary",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_task": {
+      "name": "ts_task",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "activityId": {
+          "name": "activityId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "ts_task_activity_idx": {
+          "name": "ts_task_activity_idx",
+          "columns": [
+            "activityId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ts_task_activityId_ts_activity_id_fk": {
+          "name": "ts_task_activityId_ts_activity_id_fk",
+          "tableFrom": "ts_task",
+          "tableTo": "ts_activity",
+          "columnsFrom": [
+            "activityId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_vehicles_companies": {
+      "name": "ts_vehicles_companies",
+      "columns": {
+        "vehicleId": {
+          "name": "vehicleId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "companyId": {
+          "name": "companyId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "ts_vehicles_companies_vehicleid_idx": {
+          "name": "ts_vehicles_companies_vehicleid_idx",
+          "columns": [
+            "vehicleId"
+          ],
+          "isUnique": false
+        },
+        "ts_vehicles_companies_companyid_idx": {
+          "name": "ts_vehicles_companies_companyid_idx",
+          "columns": [
+            "companyId"
+          ],
+          "isUnique": false
+        },
+        "ts_vehicles_companies_companyid_vehicleid_idx": {
+          "name": "ts_vehicles_companies_companyid_vehicleid_idx",
+          "columns": [
+            "companyId",
+            "vehicleId"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "ts_vehicles_companies_vehicleId_ts_vehicles_id_fk": {
+          "name": "ts_vehicles_companies_vehicleId_ts_vehicles_id_fk",
+          "tableFrom": "ts_vehicles_companies",
+          "tableTo": "ts_vehicles",
+          "columnsFrom": [
+            "vehicleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_vehicles_companies_companyId_ts_company_id_fk": {
+          "name": "ts_vehicles_companies_companyId_ts_company_id_fk",
+          "tableFrom": "ts_vehicles_companies",
+          "tableTo": "ts_company",
+          "columnsFrom": [
+            "companyId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_vehicles": {
+      "name": "ts_vehicles",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_taskreg": {
+      "name": "ts_taskreg",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "odooId": {
+          "name": "odooId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "activityRegistryId": {
+          "name": "activityRegistryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "taskId": {
+          "name": "taskId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lastsync": {
+          "name": "lastsync",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastmod": {
+          "name": "lastmod",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "completedDate": {
+          "name": "completedDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "completed": {
+          "name": "completed",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "observation": {
+          "name": "observation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "ts_taskreg_odooId_unique": {
+          "name": "ts_taskreg_odooId_unique",
+          "columns": [
+            "odooId"
+          ],
+          "isUnique": true
+        },
+        "ts_taskreg_serveridx": {
+          "name": "ts_taskreg_serveridx",
+          "columns": [
+            "odooId"
+          ],
+          "isUnique": false
+        },
+        "ts_taskreg_jobregidx": {
+          "name": "ts_taskreg_jobregidx",
+          "columns": [
+            "activityRegistryId"
+          ],
+          "isUnique": false
+        },
+        "ts_taskreg_taskidx": {
+          "name": "ts_taskreg_taskidx",
+          "columns": [
+            "taskId"
+          ],
+          "isUnique": false
+        },
+        "ts_taskreg_userid": {
+          "name": "ts_taskreg_userid",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        },
+        "ts_taskreg_activityRegistryId_taskId_unique": {
+          "name": "ts_taskreg_activityRegistryId_taskId_unique",
+          "columns": [
+            "activityRegistryId",
+            "taskId"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "ts_taskreg_userId_ts_users_id_fk": {
+          "name": "ts_taskreg_userId_ts_users_id_fk",
+          "tableFrom": "ts_taskreg",
+          "tableTo": "ts_users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_taskreg_activityRegistryId_ts_actreg_id_fk": {
+          "name": "ts_taskreg_activityRegistryId_ts_actreg_id_fk",
+          "tableFrom": "ts_taskreg",
+          "tableTo": "ts_actreg",
+          "columnsFrom": [
+            "activityRegistryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_taskreg_taskId_ts_task_id_fk": {
+          "name": "ts_taskreg_taskId_ts_task_id_fk",
+          "tableFrom": "ts_taskreg",
+          "tableTo": "ts_task",
+          "columnsFrom": [
+            "taskId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_users": {
+      "name": "ts_users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tz": {
+          "name": "tz",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "company": {
+          "name": "company",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "sid": {
+          "name": "sid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_worktime": {
+      "name": "ts_worktime",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "day": {
+          "name": "day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "serial": {
+          "name": "serial",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "odooId": {
+          "name": "odooId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lastsync": {
+          "name": "lastsync",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lastmod": {
+          "name": "lastmod",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "startDate": {
+          "name": "startDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "startLat": {
+          "name": "startLat",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "startLng": {
+          "name": "startLng",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "endDate": {
+          "name": "endDate",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "endLat": {
+          "name": "endLat",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "endLng": {
+          "name": "endLng",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "observation": {
+          "name": "observation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "ts_worktime_refidx": {
+          "name": "ts_worktime_refidx",
+          "columns": [
+            "day",
+            "serial"
+          ],
+          "isUnique": false
+        },
+        "ts_worktime_userid_idx": {
+          "name": "ts_worktime_userid_idx",
+          "columns": [
+            "userId"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "ts_worktime_userId_ts_users_id_fk": {
+          "name": "ts_worktime_userId_ts_users_id_fk",
+          "tableFrom": "ts_worktime",
+          "tableTo": "ts_users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ts_worktime_job_registry": {
+      "name": "ts_worktime_job_registry",
+      "columns": {
+        "day": {
+          "name": "day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "jobRegistryId": {
+          "name": "jobRegistryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "odooJobRegistryId": {
+          "name": "odooJobRegistryId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "NULL"
+        },
+        "dirty": {
+          "name": "dirty",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "1"
+        }
+      },
+      "indexes": {
+        "ts_worktime_job_registry_worktime_registry_id_idx": {
+          "name": "ts_worktime_job_registry_worktime_registry_id_idx",
+          "columns": [
+            "day"
+          ],
+          "isUnique": false
+        },
+        "ts_worktime_job_registry_pk": {
+          "name": "ts_worktime_job_registry_pk",
+          "columns": [
+            "jobRegistryId",
+            "day"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "ts_worktime_job_registry_jobRegistryId_ts_worktime_id_fk": {
+          "name": "ts_worktime_job_registry_jobRegistryId_ts_worktime_id_fk",
+          "tableFrom": "ts_worktime_job_registry",
+          "tableTo": "ts_worktime",
+          "columnsFrom": [
+            "jobRegistryId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "ts_worktime_job_registry_userId_ts_users_id_fk": {
+          "name": "ts_worktime_job_registry_userId_ts_users_id_fk",
+          "tableFrom": "ts_worktime_job_registry",
+          "tableTo": "ts_users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

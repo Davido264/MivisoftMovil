@@ -1,6 +1,9 @@
 import db, { Database } from "@/lib/db";
 import { sql } from "drizzle-orm";
-import { worktimeRegistries_table } from "@/lib/db/schema/worktime-registry";
+import {
+  worktime_job_registry_table,
+  worktimeRegistries_table,
+} from "@/lib/db/schema/worktime-registry";
 
 export function getCurrentWorktimeRegistryForUser(
   userId: number,
@@ -52,5 +55,17 @@ export function getAllPendingWorktimeRegistries(
     .where(
       sql`${worktimeRegistries_table.lastsync} IS NULL OR ${worktimeRegistries_table.lastmod} > ${worktimeRegistries_table.lastsync}`,
     )
-    .orderBy(sql`${worktimeRegistries_table.lastmod} DESC`);
+    .orderBy(sql`${worktimeRegistries_table.startDate} ASC`);
+}
+
+export function getAllPendingJobRegistrysOdooIdForUser(
+  userId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select()
+    .from(worktime_job_registry_table)
+    .where(
+      sql`${worktime_job_registry_table.userId} = ${userId} AND ${worktime_job_registry_table.odooJobRegistryId} IS NOT NULL AND ${worktime_job_registry_table.dirty} = ${true}`,
+    );
 }

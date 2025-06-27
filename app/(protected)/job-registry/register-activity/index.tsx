@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { IdNamedList } from "@/components/ui/id-named-list";
-import { getItineraryActivities } from "@/lib/db/queries/resources";
+import { getItineraryActivitiesForJobRegistryId } from "@/lib/db/queries/resources";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { Link, Redirect, useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
@@ -14,16 +14,15 @@ const taskStoreKey = "register-job-registry-tasks";
 const imageStoreKey = "register-job-registry-photos";
 
 export default function RegisterActivity() {
-  const { jobregid, itinerayid } = useLocalSearchParams<{
+  const { jobregid } = useLocalSearchParams<{
     jobregid?: string;
-    itinerayid?: string;
   }>();
 
   const { data, error, updatedAt } = useLiveQuery(
-    getItineraryActivities(Number(itinerayid ?? "0"), Number(jobregid ?? "0")),
+    getItineraryActivitiesForJobRegistryId(Number(jobregid ?? "0")),
   );
 
-  if (!jobregid || !itinerayid) {
+  if (!jobregid) {
     return <Redirect href="/job-registry/all" />;
   }
 

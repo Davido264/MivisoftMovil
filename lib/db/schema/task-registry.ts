@@ -1,5 +1,11 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, integer, text, index } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  integer,
+  text,
+  index,
+  unique,
+} from "drizzle-orm/sqlite-core";
 import { activityRegistries_table } from "@/lib/db/schema/activity-registry";
 import { tasks_table } from "@/lib/db/schema/resources";
 import { users_table } from "@/lib/db/schema/user-session";
@@ -35,6 +41,7 @@ export const taskRegistries_table = sqliteTable(
     index("ts_taskreg_jobregidx").on(table.activityRegistryId),
     index("ts_taskreg_taskidx").on(table.taskId),
     index("ts_taskreg_userid").on(table.userId),
+    unique().on(table.activityRegistryId, table.taskId),
   ],
 );
 

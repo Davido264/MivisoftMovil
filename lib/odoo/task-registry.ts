@@ -2,6 +2,8 @@ import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { RemoteActivityRegistry } from "@/lib/odoo/act-registry";
 import { parseOdoo } from "@/lib/date";
 import { Logger } from "@/lib/logger";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "@/lib/result";
 
 const logger = Logger.getLogger("");
 
@@ -22,10 +24,46 @@ export type RemoteTask = {
   name: string;
 };
 
-const odooModelRegistry = "technical_support.task_registry";
-const odooModelResource = "technical_support.task";
+export function fetchTaskRegistries(
+  client: OdooJSONRpc,
+  actRegistries: RemoteActivityRegistry[],
+) {
+  return ResultAsync.fromPromise(
+    _internalFetchTaskRegistries(client, actRegistries),
+    (e) => transformError(e, "Error al obtener registros de tareas"),
+  );
+}
 
-export async function fetchTaskRegistries(
+export function fetchTasks(client: OdooJSONRpc, activityIds: number[]) {
+  return ResultAsync.fromPromise(
+    _internfalFetchTasks(client, activityIds),
+    (e) => transformError(e, "Error al obtener tareas"),
+  );
+}
+
+export function writeTaskRegistry(
+  client: OdooJSONRpc,
+  id: number,
+  record: RemoteTaskRegistry,
+) {
+  return ResultAsync.fromPromise(
+    _internalWriteTaskRegistry(client, id, record),
+    (e) => transformError(e, "Error al actualizar registro de tarea", record),
+  );
+}
+
+export function createTaskRegistry(
+  client: OdooJSONRpc,
+  record: RemoteTaskRegistry,
+) {
+  return ResultAsync.fromPromise(
+    _internalCreateTaskRegistry(client, record),
+    (e) => transformError(e, "Error al actualizar registro de tarea", record),
+  );
+}
+
+const odooModelRegistry = "technical_support.task_registry";
+async function _internalFetchTaskRegistries(
   client: OdooJSONRpc,
   actRegistries: RemoteActivityRegistry[],
 ) {
@@ -64,7 +102,11 @@ export async function fetchTaskRegistries(
   );
 }
 
-export async function fetchTasks(client: OdooJSONRpc, activityIds: number[]) {
+const odooModelResource = "technical_support.task";
+async function _internfalFetchTasks(
+  client: OdooJSONRpc,
+  activityIds: number[],
+) {
   const tasks = await client.searchRead(
     odooModelResource,
     [["activity_id", "in", activityIds]],
@@ -80,15 +122,16 @@ export async function fetchTasks(client: OdooJSONRpc, activityIds: number[]) {
   );
 }
 
-export async function writeTaskRegistry(
+async function _internalWriteTaskRegistry(
   client: OdooJSONRpc,
   id: number,
   record: RemoteTaskRegistry,
 ) {
-  return await client.update(odooModelRegistry, id, record);
+  await client.update(odooModelRegistry, id, record);
+  return id;
 }
 
-export async function createTaskRegistry(
+async function _internalCreateTaskRegistry(
   client: OdooJSONRpc,
   record: RemoteTaskRegistry,
 ) {

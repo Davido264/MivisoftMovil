@@ -6,16 +6,15 @@ import { Logger } from "@/lib/logger";
 
 const logger = Logger.getLogger("STORAGE::PHOTOS");
 
-export async function storePhotos(scope: Database, p: PhotoInsert[]) {
+export async function storePhotos(p: PhotoInsert[], scope: Database) {
   const toInsert: PhotoInsert[] = [];
   for (const photo of p) {
     const photof = new File(photo.uri);
     if (!photof.exists) {
-      logger.error("Imagen seleccionada no existe. Omitiendo", photo);
+      logger.warn("Imagen seleccionada no existe. Omitiendo", photo);
       continue;
     }
 
-    logger.info(`Moviendo imagen a ${Paths.document.name}`, photo);
     photof.move(Paths.document);
     photo.uri = photof.uri;
     toInsert.push(photo);

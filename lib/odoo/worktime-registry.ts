@@ -1,6 +1,8 @@
 import assert from "@/lib/assert";
-import { computeYYYYMMDD, parseOdoo } from "@/lib/date";
+import { computeYYYYMMDD, dateFromYYYYMMDD, parseOdoo } from "@/lib/date";
 import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "../result";
 
 export type RemoteWorktimeRegistry = {
   id: number;
@@ -17,10 +19,48 @@ export type RemoteWorktimeRegistry = {
   lastmod: Date;
 };
 
+export function fetchLatestWorktimeRegistry(
+  client: OdooJSONRpc,
+  userId: number,
+  timezone: string,
+) {
+  return ResultAsync.fromPromise(
+    _internalFetchLatestWorktimeRegistry(client, userId, timezone),
+    (e) => transformError(e, "Error al obtener registros de jornadas"),
+  );
+}
+
+export function bulkUploadWorktimeRegistries(
+  client: OdooJSONRpc,
+  records: RemoteWorktimeRegistry[],
+) {
+  return ResultAsync.fromPromise(
+    _internalBulkUploadWorktimeRegistries(client, records),
+    (e) => transformError(e, "Error al subir registros de jornadas"),
+  );
+}
+
+export function linkJobRegistryToWorktimeRegistry(
+  client: OdooJSONRpc,
+  userId: number,
+  day: number,
+  jobRegistryIds: number[],
+) {
+  return ResultAsync.fromPromise(
+    _internalLinkJobRegistryToWorktimeRegistry(
+      client,
+      userId,
+      day,
+      jobRegistryIds,
+    ),
+    (e) => transformError(e, "Error al actualizar registros de jornadas"),
+  );
+}
+
 const odooModel = "technical_support.worktime_registry";
 const odooModelTw = "technical_support.time_window";
 
-export async function fetchLatestWorktimeRegistry(
+async function _internalFetchLatestWorktimeRegistry(
   client: OdooJSONRpc,
   userId: number,
   timezone: string,
@@ -82,10 +122,37 @@ export async function fetchLatestWorktimeRegistry(
   } as RemoteWorktimeRegistry;
 }
 
-export async function bulkUploadWorktimeRegistries(
+async function _internalBulkUploadWorktimeRegistries(
   client: OdooJSONRpc,
   records: RemoteWorktimeRegistry[],
 ) {
   const result = await client.call_kw(odooModel, "bulk_upload", [records]);
-  return result;
+  return result as number;
+}
+
+async function _internalLinkJobRegistryToWorktimeRegistry(
+  client: OdooJSONRpc,
+  userId: number,
+  day: number,
+  jobRegistryIds: number[],
+) {
+  const startDate = dateFromYYYYMMDD(day);
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 1);
+
+  const worktimeRegistryId = await client.search(odooModel, [
+    ["user_id", "=", userId],
+    ["start_datetime", ">=", startDate],
+    ["start_datetime", "<", endDate],
+  ]);
+
+  if (worktimeRegistryId.length === 0) {
+    return;
+  }
+
+  assert(worktimeRegistryId.length === 1, "Multiple worktime registries found");
+
+  await client.update(odooModel, worktimeRegistryId[0], {
+    job_registry_ids: jobRegistryIds.map((id) => [4, id]),
+  });
 }

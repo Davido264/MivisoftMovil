@@ -1,6 +1,8 @@
 import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { RemoteJobReg } from "./job-registry";
 import { parseOdoo } from "../date";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "../result";
 
 export type RemoteActivityRegistry = {
   id: number | undefined;
@@ -19,10 +21,47 @@ export type RemoteActivity = {
   name: string;
 };
 
-const odooModelRegistry = "technical_support.activity_registry";
-const odooModelResource = "technical_support.activity";
+export function fetchActivityRegistries(
+  client: OdooJSONRpc,
+  jobregs: RemoteJobReg[],
+) {
+  return ResultAsync.fromPromise(
+    _internalFetchActivityRegistries(client, jobregs),
+    (e) => transformError(e, "Error al obtener registros de actividades"),
+  );
+}
 
-export async function fetchActivityRegistries(
+export function fetchActivities(client: OdooJSONRpc, itineraryIds: number[]) {
+  return ResultAsync.fromPromise(
+    _internalFetchActivities(client, itineraryIds),
+    (e) => transformError(e, "Error al obtener actividades"),
+  );
+}
+
+export function writeActivityRegistry(
+  client: OdooJSONRpc,
+  id: number,
+  record: RemoteActivityRegistry,
+) {
+  return ResultAsync.fromPromise(
+    _internalWriteActivityRegistry(client, id, record),
+    (e) =>
+      transformError(e, "Error al actualizar registro de actividad", record),
+  );
+}
+
+export function createActivityRegistry(
+  client: OdooJSONRpc,
+  record: RemoteActivityRegistry,
+) {
+  return ResultAsync.fromPromise(
+    _internalCreateActivityRegistry(client, record),
+    (e) => transformError(e, "Error al crear registro de actividad", record),
+  );
+}
+
+const odooModelRegistry = "technical_support.activity_registry";
+async function _internalFetchActivityRegistries(
   client: OdooJSONRpc,
   jobregs: RemoteJobReg[],
 ) {
@@ -61,7 +100,8 @@ export async function fetchActivityRegistries(
   );
 }
 
-export async function fetchActivities(
+const odooModelResource = "technical_support.activity";
+async function _internalFetchActivities(
   client: OdooJSONRpc,
   itineraryIds: number[],
 ) {
@@ -78,15 +118,16 @@ export async function fetchActivities(
   }));
 }
 
-export async function writeActivityRegistry(
+async function _internalWriteActivityRegistry(
   client: OdooJSONRpc,
   id: number,
   record: RemoteActivityRegistry,
 ) {
-  return await client.update(odooModelRegistry, id, record);
+  await client.update(odooModelRegistry, id, record);
+  return id;
 }
 
-export async function createActivityRegistry(
+async function _internalCreateActivityRegistry(
   client: OdooJSONRpc,
   record: RemoteActivityRegistry,
 ) {

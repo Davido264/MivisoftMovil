@@ -22,10 +22,12 @@ _expoAppConnection.runSync("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
 
 const db = drizzle(_expoAppConnection, { schema });
 
+console.log(db.$client === _expoAppConnection)
+
 export type Database =
   | typeof db
   | Parameters<Parameters<(typeof db)["transaction"]>[0]>[0];
 
 export default db;
 
-export { _expoAppConnection, transBehavior };
+export { transBehavior };

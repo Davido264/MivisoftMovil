@@ -1,11 +1,23 @@
 import { useColorScheme } from "@/components/lib/useColorScheme";
-import { ActivityIndicator } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { CSS_COLORS } from "@/components/lib/constants";
 import { cn } from "@/components/lib/utils";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 
 function LoadingIndicator({ className }: { className: string }) {
   const { isDarkColorScheme } = useColorScheme();
+  const [showLoading, setShowLoading] = useState(false);
+  const clazz = cn(className, "bg-background")
+
+  useEffect(() => {
+    setTimeout(() => {
+      setShowLoading(true);
+    }, 100);
+  }, []);
+
+  if (!showLoading) {
+    return <View className={clazz} />;
+  }
 
   return (
     <ActivityIndicator
@@ -13,7 +25,7 @@ function LoadingIndicator({ className }: { className: string }) {
       color={
         isDarkColorScheme ? CSS_COLORS.dark.primary : CSS_COLORS.light.primary
       }
-      className={cn(className, "bg-background")}
+      className={clazz}
     />
   );
 }

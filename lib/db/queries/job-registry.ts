@@ -84,6 +84,16 @@ export function getLatestOpenJobRegistryForUser(
     .limit(1);
 }
 
+export function getObservationForJobRegistry(
+  jobRegistryId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select({ observation: jobRegistries_table.observation })
+    .from(jobRegistries_table)
+    .where(sql`${jobRegistries_table.id} = ${jobRegistryId}`);
+}
+
 export async function getLocalJobRegistryFromOdooId(
   serverId: number,
   scope: Database = db,

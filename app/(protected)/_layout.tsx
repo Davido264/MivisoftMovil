@@ -1,5 +1,7 @@
+import { Images } from "@/components/lib/icons/Images";
+import { Button } from "@/components/ui/button";
 import { useIsSessionPresent } from "@/lib/store/application-state";
-import { Redirect, Stack } from "expo-router";
+import { Link, Redirect, Stack } from "expo-router";
 
 export default function AuthorizedLayout() {
   const isSessionPresent = useIsSessionPresent();
@@ -28,7 +30,20 @@ export default function AuthorizedLayout() {
       />
       <Stack.Screen
         name="pending"
-        options={{ title: "Cambios Pendientes", headerShown: true }}
+        options={{
+          title: "Cambios Pendientes",
+          headerShown: true,
+          headerRight: () => (
+            <Link
+              href={{ pathname: "/gallery", params: { model: "all" } }}
+              asChild
+            >
+              <Button variant="ghost" size="icon">
+                <Images size={16} className="color-foreground" />
+              </Button>
+            </Link>
+          ),
+        }}
       />
     </Stack>
   );

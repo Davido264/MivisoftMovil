@@ -1,6 +1,5 @@
 import { CheckCheck } from "@/components/lib/icons/CheckCheck";
 import { CircleFadingArrowUp } from "@/components/lib/icons/CircleFadingArrowUp";
-import { Diff } from "@/components/lib/icons/Diff";
 import { GitPullRequestClosed } from "@/components/lib/icons/GitPullRequestClosed";
 import { Images } from "@/components/lib/icons/Images";
 import { Button } from "@/components/ui/button";
@@ -87,7 +86,6 @@ function PendingItem(item: PendingRegistryState) {
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
-            <Diff size={16} className="color-muted-foreground" />
             <CardTitle>{item.name}</CardTitle>
           </View>
           <View className="flex-row items-center gap-2">
@@ -174,14 +172,12 @@ function DeltaTableView({
               index !== deltaEntries.length - 1 ? "border-b border-border" : ""
             }`}
           >
-            {/* Columna Campo - Fija */}
             <View className="w-32 p-2 border-r border-border">
               <Text className="text-sm" style={{ fontFamily: "SpaceMono" }}>
                 {key}
               </Text>
             </View>
 
-            {/* Columna Valor - Con scroll horizontal */}
             <View className="flex-1">
               <ScrollView
                 // horizontal
@@ -207,8 +203,6 @@ function DeltaTableView({
             </View>
           </View>
         ))}
-
-        {/* Mensaje si no hay datos */}
         {deltaEntries.length === 0 && (
           <View className="flex-row">
             <View className="flex-1 p-4">
@@ -235,14 +229,6 @@ function formatValue(value: unknown): string {
 
   return str.replace(/\n{2,}/g, "\n");
 }
-
-/**
- 
-<DeltaView delta={item.delta} userName={userName} />
-          {item.conflicting != null && (
-            <DeltaView delta={item.conflicting} userName={userName} />
-          )}
- */
 
 function DeltaView({
   delta,

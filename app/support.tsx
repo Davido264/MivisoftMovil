@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useGlobalStore } from "@/lib/store/application-state";
-import { ScrollView, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import { Bug } from "@/components/lib/icons/Bug";
 import { exportLogs } from "@/lib/logger";
+import { useState } from "react";
 
 export default function Support() {
+  const [loading, setLoading] = useState(false);
   return (
     <View className="flex-1 items-center mb-safe-offset-5 justify-start p-4 gap-10">
       <View className="w-full gap-2">
@@ -30,11 +32,24 @@ export default function Support() {
       <ErrorMessage />
       <Button
         variant="default"
+        disabled={loading}
         className="flex-row w-full gap-3 mt-auto"
-        onPress={async () => await exportLogs()}
+        onPress={() => {
+          setLoading(true);
+          exportLogs().then(() => setLoading(false));
+        }}
       >
-        <Bug className="color-primary-foreground" />
-        <Text>Exportar logs</Text>
+        {loading ? (
+          <ActivityIndicator
+            className="color-primary-foreground"
+            size="small"
+          />
+        ) : (
+          <>
+            <Bug className="color-primary-foreground" />
+            <Text>Exportar logs</Text>
+          </>
+        )}
       </Button>
     </View>
   );

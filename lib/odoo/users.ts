@@ -1,4 +1,6 @@
 import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "../result";
 
 export type RemoteUser = {
   id: number | undefined;
@@ -11,7 +13,13 @@ const odooModelUser = "res.users";
 // { "id": 51, "full_name": "Technical Support / Administrator" } { "id": 50, "full_name": "Technical Support / User" },
 const groupIds = [50, 51];
 
-export async function fetchUsers(client: OdooJSONRpc) {
+export function fetchUsers(client: OdooJSONRpc) {
+  return ResultAsync.fromPromise(_internalFetchUsers(client), (e) =>
+    transformError(e, "No se pudo obtener los usuarios"),
+  );
+}
+
+async function _internalFetchUsers(client: OdooJSONRpc) {
   const users = await client.searchRead(
     odooModelUser,
     [["groups_id", "in", groupIds]],

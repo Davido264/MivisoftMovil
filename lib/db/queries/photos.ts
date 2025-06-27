@@ -31,3 +31,10 @@ export function getImagesForWorktimeRegistry(
     .from(photos_table)
     .where(sql`${photos_table.worktimeRegistryId} = ${worktimeRegistryId}`);
 }
+
+export function getImagesForAll(userId: number, scope: Database = db) {
+  return scope
+    .select()
+    .from(photos_table)
+    .where(sql`${photos_table.userId} = ${userId}`);
+}

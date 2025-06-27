@@ -27,7 +27,7 @@ export function upsertActivityRegistry(
           observation: sql`excluded.observation`,
           lat: sql`excluded.lat`,
           lng: sql`excluded.lng`,
-          lastmod: new Date(),
+          ...dateObj(sync),
         },
       })
       .returning({ id: activityRegistries_table.id })

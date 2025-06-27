@@ -1,6 +1,5 @@
 import * as CheckboxPrimitive from "@rn-primitives/checkbox";
 import * as React from "react";
-import { Platform } from "react-native";
 import { Check } from "@/components/lib/icons/Check";
 import { cn } from "@/components/lib/utils";
 
@@ -24,7 +23,7 @@ function Checkbox({
       >
         <Check
           size={12}
-          strokeWidth={Platform.OS === "web" ? 2.5 : 3.5}
+          strokeWidth={3.5}
           className="text-primary-foreground"
         />
       </CheckboxPrimitive.Indicator>

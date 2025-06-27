@@ -8,11 +8,13 @@ import {
   purgeDeletedJobRegistries,
   updateJobRegistry,
 } from "@/lib/db/actions/job-registry";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "../result";
 
-export async function reconciliateJobRegistries(
+export function reconciliateJobRegistries(
   remoteEntities: RemoteJobReg[],
 ) {
-  return db.transaction(
+  const r = db.transaction(
     async (tx) => {
       for (const remote of remoteEntities) {
         assert.notNull(remote.id, "remote.id");
@@ -84,4 +86,6 @@ export async function reconciliateJobRegistries(
     },
     { behavior: transBehavior },
   );
+
+  return ResultAsync.fromPromise(r, (e) => transformError(e, "Error al actualizar registros de trabajos"));
 }

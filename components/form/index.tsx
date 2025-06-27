@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button, ButtonProps } from "@/components/ui/button";
 import { ImagePicker as ImagePickerbase } from "@/components/ui/images";
 import LoadingIndicator from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
@@ -79,8 +79,10 @@ function ImagePicker({ storeKey }: { storeKey: string }) {
 
 function SubmitButton({
   children,
+  onSubmit = undefined,
+  variant="default",
   className = "mt-8",
-}: PropsWithChildren & { className?: string }) {
+}: PropsWithChildren & { onSubmit?: () => void; className?: string, variant?: ButtonProps["variant"] }) {
   const form = useFormContext();
 
   const [isSubmitting, isValid] = useStore(form.store, (state) => [
@@ -100,7 +102,13 @@ function SubmitButton({
       <Button
         disabled={!isValid || isSubmitting}
         className={className}
-        onPress={() => form.handleSubmit()}
+        variant={variant}
+        onPress={async () => {
+          await form.handleSubmit();
+          if (form.store.state.isValid) {
+            onSubmit && onSubmit();
+          }
+        }}
       >
         {isSubmitting ? (
           <ActivityIndicator

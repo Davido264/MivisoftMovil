@@ -2,7 +2,10 @@ import db, { transBehavior } from "@/lib/db";
 import assert from "@/lib/assert";
 import { RemoteTask, RemoteTaskRegistry } from "@/lib/odoo/task-registry";
 import { parseOdoo } from "@/lib/date";
-import { getLocalTaskRegistryFromOdooId } from "@/lib/db/queries/task-registries";
+import {
+  getLocalTaskRegistryFromOdooId,
+  getTaskRegistryForActivityRegistryAndTask,
+} from "@/lib/db/queries/task-registries";
 import {
   insertTaskRegistries,
   purgeDeletedTaskRegistries,
@@ -13,16 +16,18 @@ import {
   deleteNonRemoteTasks,
   upsertRemoteTasks,
 } from "@/lib/db/actions/resources";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "../result";
 
-export async function reconciliateTaskRegistries(
+export function reconciliateTaskRegistries(
   remoteEntities: RemoteTaskRegistry[],
 ) {
-  return db.transaction(
+  const r = db.transaction(
     async (tx) => {
       for (const remote of remoteEntities) {
         assert.notNull(remote.id, "remote.id");
 
-        const local = await getLocalTaskRegistryFromOdooId(remote.id, tx);
+        let local = await getLocalTaskRegistryFromOdooId(remote.id, tx);
 
         if (local === undefined) {
           const activityRegistry = await getLocalActivityFromRegistryOdooId(
@@ -37,28 +42,36 @@ export async function reconciliateTaskRegistries(
             };
           }
 
-          await insertTaskRegistries(
-            [
-              {
-                odooId: remote.id,
-                userId: remote.uid,
-                completedDate: remote.completed_date
-                  ? parseOdoo(remote.completed_date)
-                  : undefined,
-                completed: remote.completed,
-                observation: remote.observation,
-                taskId: remote.task_id,
-                activityRegistryId: activityRegistry.id,
-              },
-            ],
-            true,
-            tx,
+          const task = await getTaskRegistryForActivityRegistryAndTask(
+            activityRegistry.id,
+            remote.task_id,
           );
 
-          continue;
+          if (task === undefined) {
+            await insertTaskRegistries(
+              [
+                {
+                  odooId: remote.id,
+                  userId: remote.uid,
+                  completedDate: remote.completed_date
+                    ? parseOdoo(remote.completed_date)
+                    : undefined,
+                  completed: remote.completed,
+                  observation: remote.observation,
+                  taskId: remote.task_id,
+                  activityRegistryId: activityRegistry.id,
+                },
+              ],
+              true,
+              tx,
+            );
+            continue;
+          }
+
+          local = task;
         }
 
-        assert.notNull(local.lastsync);
+        assert.notNull(local.lastsync, "local.lastsync");
         if (
           local.lastmod <= local.lastsync &&
           remote.lastmod <= local.lastsync
@@ -72,8 +85,8 @@ export async function reconciliateTaskRegistries(
         }
 
         if (
-          local.lastmod > (local?.lastsync ?? 0) &&
-          remote.lastmod > (local?.lastsync ?? 0)
+          local.lastmod > local.lastsync &&
+          remote.lastmod > local.lastsync
         ) {
           // TODO: Conflict resolution
           continue;
@@ -103,10 +116,14 @@ export async function reconciliateTaskRegistries(
     },
     { behavior: transBehavior },
   );
+
+  return ResultAsync.fromPromise(r, (e) =>
+    transformError(e, "Error al actualizar registros de tareas"),
+  );
 }
 
-export async function applyRemoteTaskChange(tasks: RemoteTask[]) {
-  return db.transaction(
+export function applyRemoteTaskChange(tasks: RemoteTask[]) {
+  const r = db.transaction(
     async (tx) => {
       await upsertRemoteTasks(tasks, tx);
       await deleteNonRemoteTasks(
@@ -115,5 +132,9 @@ export async function applyRemoteTaskChange(tasks: RemoteTask[]) {
       );
     },
     { behavior: transBehavior },
+  );
+
+  return ResultAsync.fromPromise(r, (e) =>
+    transformError(e, "Error almacenando tareas remotas"),
   );
 }

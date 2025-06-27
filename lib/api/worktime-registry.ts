@@ -9,8 +9,10 @@ import { countPending } from "@/lib/db/queries/utils";
 import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
 import { WorktimeRegistryInsert } from "@/lib/db/schema/worktime-registry";
 import { Logger } from "@/lib/logger";
-import { attemptAsync } from "@/lib/result";
+import { transformError } from "@/lib/result";
 import { ApplicationState, globalStore } from "@/lib/store/application-state";
+import { ResultAsync } from "neverthrow";
+import assert from "@/lib/assert";
 
 const logger = Logger.getLogger("API::WORKTIME");
 
@@ -28,67 +30,131 @@ export async function registerWorktime(
   const timeZone = sessionData.tz;
   const date = new Date();
 
-  const { error } = await attemptAsync(async () =>
+  logger.info("Obteniendo último registro de tiempo trabajado");
+  const headResult = await ResultAsync.fromPromise(
+    getCurrentWorktimeRegistryForUser(userId).then((result) =>
+      result.length > 0 ? result[0] : undefined,
+    ),
+    (e) =>
+      transformError(e, "Error obteniendo el registro de tiempo trabajado"),
+  );
+
+  if (headResult.isErr()) {
+    globalStore.setState({ lastError: headResult.error });
+    return false;
+  }
+
+  const head = headResult.value;
+  const [worktimeRegistry, hasToInsert] = generateCurrentWorktimeRegistry(
+    date,
+    timeZone,
+    userId,
+    head,
+    location,
+    observation,
+  );
+
+  const result = await ResultAsync.fromPromise(
     db.transaction(
       async (tx) => {
-        logger.info("Obteniendo último registro de tiempo trabajado");
-        const head = await getCurrentWorktimeRegistryForUser(userId, tx).then(
-          (result) => (result.length > 0 ? result[0] : undefined),
-        );
-        const day = computeYYYYMMDD(date, timeZone);
-        const isOpen = head !== undefined && head.endDate === null;
-        const newEntry = {
-          userId,
-          observation,
-        } as WorktimeRegistryInsert;
-
-        if (isOpen) {
-          newEntry.endLat = location.latitude;
-          newEntry.endLng = location.longitude;
-          newEntry.endDate = date;
-        } else {
-          newEntry.day = day;
-          newEntry.serial = (head?.serial ?? 0) + 1;
-          newEntry.startLat = location.latitude;
-          newEntry.startLng = location.longitude;
-          newEntry.startDate = date;
-        }
-
-        logger.info("Guardando registro de tiempo trabajado", newEntry);
-
+        logger.info("Guardando registro de tiempo trabajado");
         let id: number = 0;
-        if (isOpen) {
-          id = await updateWorktimeRegistry(head.id, newEntry, false, tx);
+        if (hasToInsert) {
+          id = await insertWorktimeRegistry(worktimeRegistry, false, tx);
         } else {
-          id = await insertWorktimeRegistry(newEntry, false, tx);
+          assert.notNull(head, "head");
+          id = await updateWorktimeRegistry(
+            head.id,
+            worktimeRegistry,
+            false,
+            tx,
+          );
         }
 
-        await storePhotos(
-          tx,
-          photos.map((p, i) => ({
-            name: `Evidencia de jornada ${i + 1}. ${formatDateTime(date)}`,
-            model: "technical_support.worktime_registry",
-            uri: p,
-            worktimeRegistryId: id,
-            userId: sessionData.uid,
-          })),
-        );
+        const photoRegistries = photos.map((p, i) => ({
+          name: `Evidencia de jornada ${i + 1}. ${formatDateTime(date)}`,
+          model: "technical_support.worktime_registry",
+          uri: p,
+          worktimeRegistryId: id,
+          userId: sessionData.uid,
+        }));
+
+        await storePhotos(photoRegistries, tx);
       },
       { behavior: transBehavior },
     ),
+    (e) =>
+      transformError(e, "Error al registrar jornada", {
+        worktimeRegistry,
+        photos,
+      }),
   );
 
   const newState = {
     pendingChanges: await countPending(userId).catch(() => 0),
   } as ApplicationState;
 
-  if (error != null) {
-    logger.error("Error al registrar jornada", error);
-    newState.lastError = error;
+  if (result.isErr()) {
+    newState.lastError = result.error;
   } else {
     logger.info("Jornada registrada exitosamente");
   }
 
   globalStore.setState(newState);
-  return error == null;
+  return result.isOk();
+}
+
+function generateCurrentWorktimeRegistry(
+  date: Date,
+  timeZone: string,
+  userId: number,
+  head: WorktimeRegistryInsert | undefined,
+  location: { latitude: number; longitude: number },
+  observation: string | undefined = undefined,
+) {
+  const day = computeYYYYMMDD(date, timeZone);
+
+  if (head === undefined) {
+    return [
+      {
+        userId,
+        observation,
+        day,
+        serial: 1,
+        startLat: location.latitude,
+        startLng: location.longitude,
+        startDate: date,
+      } as WorktimeRegistryInsert,
+      true,
+    ] as [WorktimeRegistryInsert, boolean];
+  }
+
+  if (head.endDate === null) {
+    return [
+      {
+        userId,
+        observation,
+        day: head.day,
+        serial: head.serial,
+        endLat: location.latitude,
+        endLng: location.longitude,
+        endDate: date,
+      } as WorktimeRegistryInsert,
+      false,
+    ] as [WorktimeRegistryInsert, boolean];
+  }
+
+  const serial = head.day === day ? head.serial + 1 : 1;
+  return [
+    {
+      userId,
+      observation,
+      day,
+      serial,
+      startLat: location.latitude,
+      startLng: location.longitude,
+      startDate: date,
+    },
+    true,
+  ] as [WorktimeRegistryInsert, boolean];
 }

@@ -8,11 +8,13 @@ import {
   fetchCompanies,
   fetchItineraries,
   fetchVehicles,
+  RemoteItinerary,
 } from "@/lib/odoo/itinerary-company-vehicles";
 import { fetchUsers } from "@/lib/odoo/users";
 import {
   fetchActivities,
   fetchActivityRegistries,
+  RemoteActivity,
 } from "@/lib/odoo/act-registry";
 import { fetchTaskRegistries, fetchTasks } from "@/lib/odoo/task-registry";
 import { fetchJobRegistries } from "@/lib/odoo/job-registry";
@@ -30,120 +32,100 @@ import { fetchLatestWorktimeRegistry } from "@/lib/odoo/worktime-registry";
 import { reconciliate as reconliciateWorktimeRegistries } from "@/lib/sync/worktime-registry";
 import { OdooSession } from "@/lib/db/schema/user-session";
 import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
-import { needsSync, updateLastSync } from "@/lib/sync/last-sync";
+import { updateLastSync } from "@/lib/sync/last-sync";
 import { Logger } from "@/lib/logger";
+import { ResultAsync } from "neverthrow";
 
 const logger = Logger.getLogger("API::SYNC");
 
 const MAX_REGISTRY_AGE = 30 * 24 * 3600 * 1000; // one month
 
-export async function syncRegistries(
-  force: boolean = false,
+export function syncRegistries(
   odooClient: OdooJSONRpc,
   sessionData: OdooSession,
 ) {
-  const key = "sync::last_sync_res";
-  const frec = 1000 * 60 * 5; // 5 minutes
-
-  if (!(await needsSync(key, frec, force))) {
-    return;
-  }
-
   const maxAge = normalizedDate(
     new Date(Date.now() - MAX_REGISTRY_AGE),
     "hours",
   );
+
   logger.info(
     `Iniciando sincronización de registros desde ${formatDateTime(maxAge)}`,
   );
 
-  const [jobRegistries, worktimeRegistries] = await Promise.all([
+  return ResultAsync.combine([
     fetchJobRegistries(odooClient, maxAge),
     fetchLatestWorktimeRegistry(odooClient, sessionData.uid, sessionData.tz),
-  ]);
-
-  const [, , activityRegistries] = await Promise.all([
-    reconciliateJobRegistries(jobRegistries!),
-    reconliciateWorktimeRegistries(worktimeRegistries!, sessionData.uid),
-    fetchActivityRegistries(odooClient, jobRegistries!),
-  ]);
-
-  const [, taskRegistries] = await Promise.all([
-    reconciliateActivityRegistries(activityRegistries!),
-    fetchTaskRegistries(odooClient, activityRegistries!),
-  ]);
-
-  await reconciliateTaskRegistries(taskRegistries!);
-
-  await updateLastSync(key);
-  logger.info("Sincronización de registros exitosa");
+  ])
+    .andThen(([j, w]) =>
+      ResultAsync.combine([
+        reconciliateJobRegistries(j),
+        reconliciateWorktimeRegistries(w, sessionData.uid),
+        fetchActivityRegistries(odooClient, j),
+      ]),
+    )
+    .andThen(([, , a]) =>
+      ResultAsync.combine([
+        reconciliateActivityRegistries(a),
+        fetchTaskRegistries(odooClient, a),
+      ]),
+    )
+    .andThen(([, t]) => reconciliateTaskRegistries(t))
+    .map(() => updateLastSync("registry"))
+    .map(() => logger.info("Sincronización de registros exitosa"));
 }
 
-export async function syncResources(
-  force: boolean = false,
+export function syncResources(
   odooClient: OdooJSONRpc,
   sessionData: OdooSession,
 ) {
-  const key = "sync::last_sync_res";
-  const frec = 1000 * 60 * 15; // 15 minutes
-
-  if (!(await needsSync(key, frec, force))) {
-    return;
-  }
-
   logger.info("Iniciando Sincronización de recursos");
 
-  const [vehicles, companies, users] = await Promise.all([
+  return ResultAsync.combine([
     fetchVehicles(odooClient),
     fetchCompanies(odooClient),
     fetchUsers(odooClient),
-  ]);
-
-  await applyRemoteCompanyChange(companies);
-
-  await Promise.all([
-    applyRemoteVehicleChange(vehicles),
-    applyRemoteUsersChange(users),
-  ]);
-
-  await updateLastSync(key);
-  logger.info("Sincronización de recursos exitosa");
+  ])
+    .andThen(([v, c, u]) =>
+      applyRemoteCompanyChange(c).andThen(() =>
+        ResultAsync.combine([
+          applyRemoteVehicleChange(v),
+          applyRemoteUsersChange(u),
+        ]),
+      ),
+    )
+    .map(() => updateLastSync("resource"))
+    .map(() => logger.info("Sincronización de recursos exitosa"));
 }
 
-export async function syncItinerary(
-  force: boolean = false,
+export function syncItinerary(
   odooClient: OdooJSONRpc,
   sessionData: OdooSession,
 ) {
-  const key = "sync::last_sync_itinerary";
-  const frec = 1000 * 60 * 5; // 5 minutes
-
-  if (!(await needsSync(key, frec, force))) {
-    return;
-  }
-
   logger.info("Iniciando Sincronización de itinerarios");
 
-  const itineraries = await fetchItineraries(odooClient);
+  return fetchItineraries(odooClient)
+    .andThen((i) =>
+      ResultAsync.combine([
+        applyRemoteItineraryChange(i),
+        fetchActivities(odooClient, itineraryIds(i)),
+      ]),
+    )
+    .andThen(([, a]) =>
+      ResultAsync.combine([
+        applyRemoteActivityChange(a),
+        fetchTasks(odooClient, activityIds(a)),
+      ]),
+    )
+    .andThen(([, t]) => applyRemoteTaskChange(t))
+    .map(() => updateLastSync("itinerary"))
+    .map(() => logger.info("Sincronización de itinerarios exitosa"));
+}
 
-  const [, activities] = await Promise.all([
-    applyRemoteItineraryChange(itineraries),
-    fetchActivities(
-      odooClient,
-      itineraries.map((it) => it.id!),
-    ),
-  ]);
+function itineraryIds(itineraries: RemoteItinerary[]) {
+  return itineraries.map((i) => i.id!);
+}
 
-  const [, tasks] = await Promise.all([
-    applyRemoteActivityChange(activities!),
-    fetchTasks(
-      odooClient,
-      activities!.map((it) => it.id!),
-    ),
-  ]);
-
-  await applyRemoteTaskChange(tasks!);
-
-  await updateLastSync(key);
-  logger.info("Sincronización de itinerarios exitosa");
+function activityIds(activities: RemoteActivity[]) {
+  return activities.map((i) => i.id!);
 }

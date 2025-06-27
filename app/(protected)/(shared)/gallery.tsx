@@ -7,6 +7,7 @@ import { ImageElement, ImageElementWithRemove } from "@/components/ui/images";
 import assert from "@/lib/assert";
 import {
   getImagesForActivityRegistry,
+  getImagesForAll,
   getImagesForJobRegistry,
   getImagesForWorktimeRegistry,
 } from "@/lib/db/queries/photos";
@@ -14,22 +15,25 @@ import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import LoadingIndicator from "@/components/ui/loading-indicator";
 import ErrorScreen from "@/components/ui/error-screen";
 import { PhotoSelect } from "@/lib/db/schema/photos";
+import { useSession } from "@/lib/store/application-state";
+
+const galleryModels = ["jobreg", "actreg", "worktime", "all"] as const;
+export type GalleryModel = (typeof galleryModels)[number];
 
 export default function Gallery() {
   const { storeKey, model, id } = useLocalSearchParams<{
-    storeKey: string;
-    model?: string;
+    storeKey?: string;
+    model?: GalleryModel;
     id?: string;
   }>();
 
   if (!storeKey) {
     assert.notNull(model);
-    assert.notNull(id);
+    if (model !== "all") {
+      assert.notNull(id);
+    }
 
-    assert(
-      ["jobreg", "actreg", "worktime"].includes(model),
-      `Invalid model: ${model}`,
-    );
+    assert(galleryModels.includes(model), `Invalid model: ${model}`);
     return <ReadonlyGallery model={model} id={id} />;
   }
 
@@ -37,7 +41,8 @@ export default function Gallery() {
   return <BaseGallery storeKey={storeKey} />;
 }
 
-function ReadonlyGallery({ model, id }: { model: string; id: string }) {
+function ReadonlyGallery({ model, id }: { model: GalleryModel; id: string | undefined }) {
+  const userId = useSession((s) => s.uid);
   let query = undefined;
 
   switch (model) {
@@ -50,9 +55,12 @@ function ReadonlyGallery({ model, id }: { model: string; id: string }) {
     case "worktime":
       query = getImagesForWorktimeRegistry(Number(id));
       break;
+    case "all":
+      query = getImagesForAll(userId);
+      break;
   }
 
-  const { data, updatedAt, error } = useLiveQuery(query!);
+  const { data, updatedAt, error } = useLiveQuery(query);
 
   if (!updatedAt) {
     return <LoadingIndicator className="flex-1 items-center justify-center" />;

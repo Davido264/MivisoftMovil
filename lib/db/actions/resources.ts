@@ -6,6 +6,9 @@ import {
   tasks_table,
   companies_table,
   vehicles_table,
+  vehicles_companies_table,
+  VehicleCompanyInsert,
+  VehicleInsert,
 } from "@/lib/db/schema/resources";
 import { sql } from "drizzle-orm";
 import {
@@ -47,22 +50,39 @@ export async function deleteNonRemobeActivities(
 }
 
 export async function upsertVehicles(v: RemoteVehicle[], scope: Database = db) {
-  return scope
-    .insert(vehicles_table)
-    .values(
-      v.map((i) => ({
-        id: i.id,
-        name: i.name,
-        companyId: i.company_id,
-      })),
-    )
-    .onConflictDoUpdate({
-      target: vehicles_table.id,
-      set: {
-        name: sql`excluded.name`,
-        companyId: sql`excluded.companyId`,
-      },
-    });
+  return scope.transaction(async (tx) => {
+    await tx
+      .insert(vehicles_table)
+      .values(
+        v.map((i) => ({
+          id: i.id,
+          name: i.name,
+        } as VehicleInsert)),
+      )
+      .onConflictDoUpdate({
+        target: vehicles_table.id,
+        set: {
+          name: sql`excluded.name`,
+        },
+      });
+
+    const entries = v.flatMap((i) =>
+      i.company_ids.map(
+        (c) => ({ vehicleId: i.id, companyId: c }) as VehicleCompanyInsert,
+      ),
+    );
+
+    await tx
+      .insert(vehicles_companies_table)
+      .values(entries)
+      .onConflictDoUpdate({
+        target: [vehicles_companies_table.companyId, vehicles_companies_table.vehicleId],
+        set: {
+          companyId: sql`excluded.companyId`,
+          vehicleId: sql`excluded.vehicleId`,
+        },
+      });
+  });
 }
 
 export async function deleteNonRemoteVehicles(

@@ -39,7 +39,8 @@ export default function RegisterActivityForm() {
 
   const currentAvtivity = data?.length > 0 ? data[0] : undefined;
 
-  useSharedImageListStore(imageStoreKey);
+  const imageStore = useSharedImageListStore(imageStoreKey);
+  const photos = useStore(imageStore, (i) => i.photos);
   const taskStore = useSharedTaskListStore(taskStoreKey);
   const tasks = useStore(taskStore, (state) => state.tasks);
 
@@ -50,7 +51,7 @@ export default function RegisterActivityForm() {
       jobRegistryId: Number(jobregid ?? 0),
       activityId: Number(actid ?? 0),
       comment: currentAvtivity?.observation ?? "",
-      photos: [] as string[],
+      photos,
       tasks,
     },
     validators: {
@@ -141,10 +142,28 @@ export default function RegisterActivityForm() {
         </form.AppField>
 
         <form.AppForm>
-          <form.SubmitButton className="flex-row gap-2 items-center justify-center">
-            <Send className="color-primary-foreground" size={16} />
-            <Text>Enviar</Text>
-          </form.SubmitButton>
+          <View className="w-full flex-col gap-2">
+            <form.SubmitButton
+              className="flex-row gap-2 items-center justify-center"
+              onSubmit={() =>
+                router.dismissTo({
+                  pathname: "/job-registry/register-activity",
+                  params: { jobregid },
+                })
+              }
+            >
+              <Send className="color-primary-foreground" size={16} />
+              <Text>Enviar y Crear Nuevo</Text>
+            </form.SubmitButton>
+
+            <form.SubmitButton
+              className="flex-row gap-2 items-center justify-center"
+              variant="outline"
+            >
+              <Send className="color-foreground" size={16} />
+              <Text>Enviar y Cerrar</Text>
+            </form.SubmitButton>
+          </View>
         </form.AppForm>
       </View>
     </KeyboardAwareScrollView>

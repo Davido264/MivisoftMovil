@@ -1,6 +1,6 @@
 import db, { transBehavior } from "@/lib/db";
 import { Logger } from "@/lib/logger";
-import { attemptAsync } from "@/lib/result";
+import { transformError } from "@/lib/result";
 import { storePhotos } from "@/lib/db/actions/photos";
 import { formatDateTime } from "@/lib/date";
 import {
@@ -9,6 +9,11 @@ import {
 } from "@/lib/db/actions/job-registry";
 import { ApplicationState, globalStore } from "@/lib/store/application-state";
 import { countPending } from "@/lib/db/queries/utils";
+import { JobRegistryInsert } from "@/lib/db/schema/job-registry";
+import { ResultAsync } from "neverthrow";
+import { addJobRegistryToWorktimeRegistry } from "@/lib/db/actions/worktime-registry";
+import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
+import assert from "@/lib/assert";
 
 const logger = Logger.getLogger("API::JOB-REGISTRY");
 
@@ -27,52 +32,69 @@ export async function startJob(
   const userId = sessionData.uid;
   const startDate = new Date();
 
-  const { error } = await attemptAsync(async () =>
+  const jobRegistry = {
+    startDate,
+    userId,
+    itineraryId,
+    companyId,
+    vehicleId,
+    observation,
+  } as JobRegistryInsert;
+
+  const result = await ResultAsync.fromPromise(
     db.transaction(
       async (tx) => {
         logger.info("Actualizando registro de trabajo");
-        const id = await insertJobRegistry(
-          {
-            startDate,
-            userId,
-            itineraryId,
-            companyId,
-            vehicleId,
-            observation,
-          },
-          false,
-          tx,
-        );
+        const id = await insertJobRegistry(jobRegistry, false, tx);
+
+        const photos = images.map((img, i) => ({
+          name: `Evidencia de trabajo ${i + 1}. ${formatDateTime(startDate)}`,
+          model: "technical_support.job_registry",
+          jobRegistryId: id,
+          uri: img,
+          userId: sessionData.uid,
+        }));
 
         logger.info("Almacenando imágenes");
-        await storePhotos(
+        await storePhotos(photos, tx);
+
+        logger.info("Consultando jornada actual");
+        const worktimeRegistryDay = await getCurrentWorktimeRegistryForUser(
+          sessionData.uid,
           tx,
-          images.map((img, i) => ({
-            name: `Evidencia de trabajo ${i + 1}. ${formatDateTime(startDate)}`,
-            model: "technical_support.job_registry",
-            jobRegistryId: id,
-            uri: img,
-            userId: sessionData.uid,
-          })),
+        ).then((result) => {
+          assert(result.length > 0, "result.length > 0");
+          return result[0].day;
+        });
+
+        await addJobRegistryToWorktimeRegistry(
+          worktimeRegistryDay,
+          id,
+          sessionData.uid,
+          tx,
         );
       },
       { behavior: transBehavior },
     ),
+    (e) =>
+      transformError(e, "Error al iniciar el trabajo", {
+        jobRegistry,
+        photos: images,
+      }),
   );
 
   const newState = {
     pendingChanges: await countPending(userId).catch(() => 0),
   } as ApplicationState;
 
-  if (error != null) {
-    logger.error("Error al iniciar el trabajo", error);
-    newState.lastError = error;
+  if (result.isErr()) {
+    newState.lastError = result.error;
   } else {
     logger.info("Trabajo iniciado exitosamente");
   }
 
   globalStore.setState(newState);
-  return error == null;
+  return result.isOk();
 }
 
 export async function finishJob(
@@ -90,19 +112,19 @@ export async function finishJob(
   const userId = sessionData.uid;
   const date = new Date();
 
-  const { error } = await attemptAsync(async () =>
+  const update = {
+    endDate: date,
+    score,
+    observation,
+  } as Partial<JobRegistryInsert>;
+
+  const result = await ResultAsync.fromPromise(
     db.transaction(
       async (tx) => {
-        const update = {
-          endDate: date,
-          score,
-          observation,
-        };
         logger.info("Actualizando registro de trabajo");
         await updateJobRegistry(jobRegistryId, update, false, tx);
 
-        logger.info("Almacenando firma e imágenes");
-        await storePhotos(tx, [
+        const signRegistry = [
           {
             name: `Firma del encargado ${formatDateTime(date)}`,
             uri: sign,
@@ -111,34 +133,57 @@ export async function finishJob(
             isSign: true,
             userId: sessionData.uid,
           },
-        ]);
+        ];
 
-        await storePhotos(
+        logger.info("Almacenando firma e imágenes");
+        await storePhotos(signRegistry, tx);
+
+        const photos = images.map((img, i) => ({
+          name: `Evidencia de finalización de trabajo ${i + 1} ${formatDateTime(date)}`,
+          uri: img,
+          model: "technical_support.job_registry",
+          jobRegistryId: jobRegistryId,
+          userId: sessionData.uid,
+        }));
+
+        await storePhotos(photos, tx);
+
+        logger.info("Consultando jornada actual");
+        const worktimeRegistryDay = await getCurrentWorktimeRegistryForUser(
+          sessionData.uid,
           tx,
-          images.map((img, i) => ({
-            name: `Evidencia de finalización de trabajo ${i + 1} ${formatDateTime(date)}`,
-            uri: img,
-            model: "technical_support.job_registry",
-            jobRegistryId: jobRegistryId,
-            userId: sessionData.uid,
-          })),
+        ).then((result) => {
+          assert(result.length > 0, "result.length > 0");
+          return result[0].day;
+        });
+
+        await addJobRegistryToWorktimeRegistry(
+          worktimeRegistryDay,
+          jobRegistryId,
+          sessionData.uid,
+          tx,
         );
       },
       { behavior: transBehavior },
     ),
+    (e) =>
+      transformError(e, "Error al finalizar el trabajo", {
+        jobRegistryId,
+        update,
+        photos: images,
+      }),
   );
 
   const newState = {
     pendingChanges: await countPending(userId).catch(() => 0),
   } as ApplicationState;
 
-  if (error != null) {
-    logger.error("Error al finalizar el trabajo", error);
-    newState.lastError = error;
+  if (result.isErr()) {
+    newState.lastError = result.error;
   } else {
     logger.info("Trabajo finalizado exitosamente");
   }
 
   globalStore.setState(newState);
-  return error == null;
+  return result.isOk();
 }

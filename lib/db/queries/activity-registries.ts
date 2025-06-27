@@ -44,3 +44,14 @@ export function getAllPendingActivityRegistries(
     )
     .orderBy(sql`${activityRegistries_table.lastmod} DESC`);
 }
+
+export function getActivityRegistryCount(
+  jobRegistryId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select({ count: sql`COUNT(*)`.mapWith(Number) })
+    .from(activityRegistries_table)
+    .where(sql`${activityRegistries_table.jobRegistryId} = ${jobRegistryId}`)
+    .then((r) => r[0].count);
+}

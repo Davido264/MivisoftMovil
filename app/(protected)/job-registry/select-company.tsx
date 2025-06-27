@@ -1,5 +1,5 @@
 import { Text } from "@/components/ui/text";
-import { getAllCompanies } from "@/lib/db/queries/company-vehicles";
+import { getAllCompanies } from "@/lib/db/queries/resources";
 import { Button } from "@/components/ui/button";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { View } from "react-native";

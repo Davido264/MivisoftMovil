@@ -12,15 +12,15 @@ import { PortalHost } from "@rn-primitives/portal";
 import { SplashScreen, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
-import ErrorScreen from "@/components/ui/error-screen";
 import { ToastProvider } from "@/components/ui/toast";
 import { useInit } from "@/lib/api/init";
-import { _expoAppConnection } from "@/lib/db";
+import db from "@/lib/db";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { useSQLiteDevTools } from "expo-sqlite-devtools";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
+import Support from "./support";
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -38,7 +38,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const { isDarkColorScheme } = useColorScheme();
 
-  useSQLiteDevTools(_expoAppConnection);
+  useSQLiteDevTools(db.$client);
 
   return (
     <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
@@ -57,14 +57,14 @@ export default function RootLayout() {
 }
 
 function InnerLayout() {
-  const [ok, loading, error] = useInit();
+  const [ok, loading] = useInit();
 
   if (loading) {
     return null;
   }
 
   if (!ok) {
-    return <ErrorScreen msg={error} />;
+    return <Support />;
   }
 
   return (

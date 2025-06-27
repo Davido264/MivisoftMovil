@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `ts_taskreg_activityRegistryId_taskId_unique` ON `ts_taskreg` (`activityRegistryId`,`taskId`);

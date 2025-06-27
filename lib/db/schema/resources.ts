@@ -1,20 +1,39 @@
-import { sqliteTable, integer, text, index } from "drizzle-orm/sqlite-core";
+import {
+  sqliteTable,
+  integer,
+  text,
+  index,
+  unique,
+} from "drizzle-orm/sqlite-core";
 
 export const companies_table = sqliteTable("ts_company", {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull(),
 });
 
-export const vehicles_table = sqliteTable(
-  "ts_vehicles",
+export const vehicles_table = sqliteTable("ts_vehicles", {
+  id: integer().primaryKey({ autoIncrement: true }),
+  name: text().notNull(),
+});
+
+export const vehicles_companies_table = sqliteTable(
+  "ts_vehicles_companies",
   {
-    id: integer().primaryKey({ autoIncrement: true }),
+    vehicleId: integer()
+      .notNull()
+      .references(() => vehicles_table.id, { onDelete: "cascade" }),
     companyId: integer()
       .notNull()
       .references(() => companies_table.id, { onDelete: "cascade" }),
-    name: text().notNull(),
   },
-  (table) => [index("ts_vehicle_company_idx").on(table.companyId)],
+  (table) => [
+    index("ts_vehicles_companies_vehicleid_idx").on(table.vehicleId),
+    index("ts_vehicles_companies_companyid_idx").on(table.companyId),
+    unique("ts_vehicles_companies_companyid_vehicleid_idx").on(
+      table.companyId,
+      table.vehicleId,
+    ),
+  ],
 );
 
 export const itineraries_table = sqliteTable("ts_itinerary", {
@@ -52,6 +71,8 @@ export type CompanySelect = typeof companies_table.$inferSelect;
 
 export type VehicleInsert = typeof vehicles_table.$inferInsert;
 export type VehicleSelect = typeof vehicles_table.$inferSelect;
+
+export type VehicleCompanyInsert = typeof vehicles_companies_table.$inferInsert;
 
 export type ItineraryInsert = typeof itineraries_table.$inferInsert;
 export type ItinerarySelect = typeof itineraries_table.$inferSelect;

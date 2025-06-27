@@ -71,6 +71,21 @@ export function computeYYYYMMDD(date: Date, timeZone: string) {
   );
 }
 
+export function dateFromYYYYMMDD(date: number) {
+  const year = Math.floor(date / 10000);
+  const month = Math.floor((date % 10000) / 100);
+  const day = date % 100;
+  const d = new Date();
+  d.setFullYear(year);
+  d.setMonth(month - 1);
+  d.setDate(day);
+  d.setHours(0);
+  d.setMinutes(0);
+  d.setSeconds(0);
+  d.setMilliseconds(0);
+  return d;
+}
+
 const formatters = {
   dFormat: new Intl.DateTimeFormat("es-ES", {
     day: "numeric",

@@ -6,11 +6,17 @@ import { useColorScheme } from "@/components/lib/useColorScheme";
 import { Button } from "@/components/ui/button";
 import { CSS_COLORS } from "@/components/lib/constants";
 import { CircleEllipsis } from "lucide-react-native";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { useGlobalStore } from "@/lib/store/application-state";
 import { syncAll } from "@/lib/api/sync";
 import { logout } from "@/lib/api/user-session";
+import { checkUpdates, updateApp } from "@/lib/api/update-app";
+
+const updateMsg = `
+Se ha encontrado una actualización, debería aplicarse cuando abra la aplicación si tiene internet,
+pero puede aplicarla en este momento pulsando 'Actualizar', esto no implica una pérdida de información
+`.trim();
 
 export default function Options() {
   const modalRef = useRef<BSM>(null);
@@ -23,6 +29,25 @@ export default function Options() {
   const handleForceSync = async () => {
     modalRef.current?.dismiss();
     await syncAll(true);
+  };
+
+  const handleUpdate = async () => {
+    modalRef.current?.dismiss();
+    const hasUpdates = await checkUpdates();
+    if (!hasUpdates) {
+      return;
+    }
+
+    Alert.alert("Actualización disponible", updateMsg, [
+      {
+        text: "Después",
+      },
+      {
+        isPreferred: true,
+        text: "Actualizar",
+        onPress: async () => updateApp(),
+      },
+    ]);
   };
 
   return (
@@ -40,7 +65,7 @@ export default function Options() {
       >
         <CircleEllipsis color={CSS_COLORS[theme].foreground} />
       </Button>
-      <BottomSheetModal ref={modalRef} snapPoints={["40%"]}>
+      <BottomSheetModal ref={modalRef} snapPoints={["45%"]}>
         <View className="h-full bg-transparent p-4 gap-3">
           <Button
             variant={"ghost"}
@@ -69,6 +94,9 @@ export default function Options() {
             }}
           >
             <Text>Soporte</Text>
+          </Button>
+          <Button variant={"ghost"} className="w-full" onPress={handleUpdate}>
+            <Text>Actualizar aplicación</Text>
           </Button>
           <Button
             variant={"ghost"}

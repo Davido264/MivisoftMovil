@@ -1,4 +1,6 @@
 import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "@/lib/result";
 
 export type RemoteItinerary = {
   id: number | undefined;
@@ -7,7 +9,7 @@ export type RemoteItinerary = {
 
 export type RemoteVehicle = {
   id: number | undefined;
-  company_id: number;
+  company_ids: number[];
   name: string;
 };
 
@@ -16,11 +18,26 @@ export type RemoteCompany = {
   name: string;
 };
 
-const odooModelItinerary = "technical_support.itinerary";
-const odooModelVehicle = "fleet.vehicle";
-const odooModelCompany = "res.company";
+export function fetchItineraries(client: OdooJSONRpc) {
+  return ResultAsync.fromPromise(_internalFetchItineraries(client), (e) =>
+    transformError(e, "Error al obtener itinerarios"),
+  );
+}
 
-export async function fetchItineraries(client: OdooJSONRpc) {
+export function fetchCompanies(client: OdooJSONRpc) {
+  return ResultAsync.fromPromise(_internalFetchCompanies(client), (e) =>
+    transformError(e, "Error al obtener companías"),
+  );
+}
+
+export function fetchVehicles(client: OdooJSONRpc) {
+  return ResultAsync.fromPromise(_internalFetchVehicle(client), (e) =>
+    transformError(e, "Error al obtener vehículos"),
+  );
+}
+
+const odooModelItinerary = "technical_support.itinerary";
+async function _internalFetchItineraries(client: OdooJSONRpc) {
   const itineraries = await client.searchRead(
     odooModelItinerary,
     [],
@@ -39,7 +56,8 @@ export async function fetchItineraries(client: OdooJSONRpc) {
   );
 }
 
-export async function fetchCompanies(client: OdooJSONRpc) {
+const odooModelCompany = "res.company";
+async function _internalFetchCompanies(client: OdooJSONRpc) {
   const companies = await client.searchRead(
     odooModelCompany,
     [],
@@ -51,19 +69,20 @@ export async function fetchCompanies(client: OdooJSONRpc) {
   );
 }
 
-export async function fetchVehicles(client: OdooJSONRpc) {
+const odooModelVehicle = "fleet.vehicle";
+async function _internalFetchVehicle(client: OdooJSONRpc) {
   const vehicles = await client.searchRead(
     odooModelVehicle,
     [],
-    ["id", "display_name", "company_id"],
+    ["id", "municipal_registry", "unit_number", "company_ids"],
   );
 
   return vehicles.map(
     (v: any) =>
       ({
         id: v.id as number,
-        name: v.display_name as string,
-        company_id: v.company_id[0] as number,
+        name: `${v.unit_number} | ${v.municipal_registry}`,
+        company_ids: v.company_ids as number[],
       }) as RemoteVehicle,
   );
 }

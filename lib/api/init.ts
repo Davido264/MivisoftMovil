@@ -4,12 +4,13 @@ import { restoreAndValidateSession } from "@/lib/api/user-session";
 import db from "@/lib/db";
 import { countPending } from "@/lib/db/queries/utils";
 import { Logger } from "@/lib/logger";
-import { attemptAsync } from "@/lib/result";
+import { transformError } from "@/lib/result";
 import { globalStore } from "@/lib/store/application-state";
 import { migrate } from "drizzle-orm/expo-sqlite/migrator";
 import { useFonts } from "expo-font";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
-import { SplashScreen, useRouter } from "expo-router";
+import { SplashScreen } from "expo-router";
+import { ResultAsync } from "neverthrow";
 import { useEffect, useState } from "react";
 import { AppState } from "react-native";
 import Toast from "react-native-toast-message";
@@ -18,12 +19,12 @@ const logger = Logger.getLogger("API::INIT");
 const applicationLogger = Logger.getLogger("APP");
 
 export async function init() {
-  const migrationResult = await attemptAsync(async () =>
-    migrate(db, migrations),
-  );
+  const migrationResult = await ResultAsync.fromThrowable(
+    async () => migrate(db, migrations),
+    (e) => transformError(e, "Error de migración de base de datos"),
+  )();
 
-  if (migrationResult.error != null) {
-    logger.error("No se pudo realizar la migración", migrationResult.error);
+  if (migrationResult.isErr()) {
     globalStore.setState({ lastError: migrationResult.error });
     return migrationResult.error.message;
   }
@@ -49,18 +50,27 @@ export async function init() {
 export function useInit() {
   const [ok, setOk] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const router = useRouter();
 
   const [fontLoaded, fontError] = useFonts({
     SpaceMono: require("../../assets/fonts/SpaceMono-Regular.ttf"),
   });
 
   useEffect(() => {
+    if (fontError) {
+      setOk(false);
+      globalStore.setState({
+        lastError: {
+          type: "UnknownError",
+          message: "Error al cargar la fuente",
+          original: fontError,
+        },
+      });
+      return;
+    }
+
     init()
       .then((o) => {
         setOk(o === undefined);
-        setError(o);
       })
       .then(SplashScreen.hideAsync)
       .finally(() => setLoading(false));
@@ -94,7 +104,7 @@ export function useInit() {
         if (
           state.lastError.type === "SessionExpired" ||
           state.lastError.type === "InvalidCredentials"
-        )
+        ) {
           Toast.show({
             type: "error",
             text1: "Error",
@@ -102,6 +112,9 @@ export function useInit() {
             swipeable: true,
             autoHide: true,
           });
+        } else {
+          applicationLogger.error(state.lastError.message, state.lastError);
+        }
       }
 
       if (state.lastMsg !== previousState.lastMsg && state.lastMsg != null) {
@@ -119,9 +132,7 @@ export function useInit() {
       memoryWarningEventSubscription.remove();
       unSubscribeGlobal();
     };
-  }, []);
+  }, [fontError]);
 
-  return [ok, loading && !fontLoaded, error ?? fontError?.message] as
-    | [true, boolean, undefined]
-    | [false, boolean, string];
+  return [ok, loading && !fontLoaded] as [true, boolean] | [false, boolean];
 }

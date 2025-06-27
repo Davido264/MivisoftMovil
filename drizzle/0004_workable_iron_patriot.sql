@@ -1,0 +1,1 @@
+ALTER TABLE `ts_worktime_job_registry` ADD `userId` integer NOT NULL REFERENCES ts_users(id);

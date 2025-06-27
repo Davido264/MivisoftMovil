@@ -15,11 +15,13 @@ import {
   deleteNonRemobeActivities,
   upsertActivities,
 } from "@/lib/db/actions/resources";
+import { ResultAsync } from "neverthrow";
+import { transformError } from "@/lib/result";
 
-export async function reconciliateActivityRegistries(
+export function reconciliateActivityRegistries(
   remoteEntities: RemoteActivityRegistry[],
 ) {
-  db.transaction(
+  const r = db.transaction(
     async (tx) => {
       for (const remote of remoteEntities) {
         assert.notNull(remote.id, "remote.id");
@@ -96,10 +98,14 @@ export async function reconciliateActivityRegistries(
     },
     { behavior: transBehavior },
   );
+
+  return ResultAsync.fromPromise(r, (e) =>
+    transformError(e, "Error al actualizar registros de actividades"),
+  );
 }
 
-export async function applyRemoteActivityChange(activities: RemoteActivity[]) {
-  return db.transaction(
+export function applyRemoteActivityChange(activities: RemoteActivity[]) {
+  const r = db.transaction(
     async (tx) => {
       await upsertActivities(activities, tx);
       await deleteNonRemobeActivities(
@@ -108,5 +114,8 @@ export async function applyRemoteActivityChange(activities: RemoteActivity[]) {
       );
     },
     { behavior: transBehavior },
+  );
+  return ResultAsync.fromPromise(r, (e) =>
+    transformError(e, "Error al actualizar actividades"),
   );
 }

@@ -1,13 +1,18 @@
 import { Logger } from "@/lib/logger";
 import { countPending } from "@/lib/db/queries/utils";
 import { ApplicationState, globalStore } from "@/lib/store/application-state";
-import { attemptAsync } from "@/lib/result";
 import { syncItinerary, syncRegistries, syncResources } from "@/lib/sync";
 import { uploadJobRegistries } from "@/lib/upload/job-registry";
 import { uploadActivityRegistries } from "@/lib/upload/activity-registry";
-import { uploadTaskRegistries } from "../upload/task-registry";
-import { uploadWorktimeRegistry } from "../upload/worktime-registry";
-import { uploadPhotos } from "../upload/photos";
+import { uploadTaskRegistries } from "@/lib/upload/task-registry";
+import {
+  linkRemoteWorktimeRegistry,
+  uploadWorktimeRegistry,
+} from "@/lib/upload/worktime-registry";
+import { uploadPhotos } from "@/lib/upload/photos";
+import { okAsync } from "neverthrow";
+import { isDirty } from "@/lib/sync/last-sync";
+import { transformError } from "../result";
 
 const logger = Logger.getLogger("API::SYNC");
 
@@ -21,21 +26,35 @@ export async function syncAll(force: boolean = false) {
   }
 
   globalStore.setState({ isSyncing: true });
-  const { error } = await attemptAsync(async () => {
-    logger.info("Iniciando descarga de registros");
-    await syncResources(force, odooClient, sessionData);
-    await syncItinerary(force, odooClient, sessionData);
-    await syncRegistries(force, odooClient, sessionData);
-    logger.info("Descarga de registros exitosa");
+  logger.info("Iniciando descarga de registros");
 
-    logger.info("Iniciando subida de registros");
-    await uploadJobRegistries(odooClient, sessionData.uid);
-    await uploadActivityRegistries(odooClient, sessionData.uid);
-    await uploadTaskRegistries(odooClient, sessionData.uid);
-    await uploadWorktimeRegistry(odooClient, sessionData.uid);
-    await uploadPhotos(odooClient);
-    logger.info("Subida de registros exitosa");
-  });
+  const [resourcesDirty, itinerariesDirty, registriesDirty] = await Promise.all(
+    [isDirty("resource"), isDirty("itinerary"), isDirty("registry")],
+  );
+
+  const result = await (
+    force || resourcesDirty ? syncResources(odooClient, sessionData) : okAsync()
+  )
+    .andThen(() =>
+      force || itinerariesDirty
+        ? syncItinerary(odooClient, sessionData)
+        : okAsync(),
+    )
+    .andThen(() =>
+      force || registriesDirty
+        ? syncRegistries(odooClient, sessionData)
+        : okAsync(),
+    )
+    .map(() => logger.info("Descarga de registros exitosa"))
+    .map(() => logger.info("Iniciando subida de registros"))
+    .andThen(() => uploadJobRegistries(odooClient, sessionData.uid))
+    .andThen(() => uploadActivityRegistries(odooClient, sessionData.uid))
+    .andThen(() => uploadTaskRegistries(odooClient, sessionData.uid))
+    .andThen(() => uploadWorktimeRegistry(odooClient, sessionData.uid))
+    .andThen(() => linkRemoteWorktimeRegistry(odooClient, sessionData.uid))
+    .andThen(() => uploadPhotos(odooClient))
+    .map(() => logger.info("Subida de registros exitosa"))
+    .mapErr((e) => transformError(e, "Error al sincronizar datos"));
 
   const newState = {
     isSyncing: false,
@@ -43,11 +62,9 @@ export async function syncAll(force: boolean = false) {
     pendingChanges: await countPending(sessionData.uid).catch(() => 0),
   } as ApplicationState;
 
-  if (error != null) {
-    logger.error("Error al sincronizar datos", error);
-    newState.lastError = error;
+  if (result.isErr()) {
+    newState.lastError = result.error;
   } else {
-    logger.info("Sincronización general exitosa");
     newState.lastMsg = "Sincronización general exitosa";
   }
 

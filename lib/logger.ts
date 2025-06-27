@@ -1,8 +1,17 @@
-import { File, Paths } from "expo-file-system/next";
+import { Paths } from "expo-file-system/next";
 import * as Sharing from "expo-sharing";
 import { defaultDatabaseDirectory, openDatabaseSync } from "expo-sqlite";
-import { attempt, attemptAsync } from "./result";
-import { globalStore } from "./store/application-state";
+import { transformError } from "@/lib/result";
+import { globalStore } from "@/lib/store/application-state";
+import { Result, ResultAsync } from "neverthrow";
+import { getAllPendingJobRegistries } from "@/lib/db/queries/job-registry";
+import { getAllPendingActivityRegistries } from "@/lib/db/queries/activity-registries";
+import { getAllPendingTaskRegistries } from "@/lib/db/queries/task-registries";
+import {
+  getAllPendingJobRegistrysOdooIdForUser,
+  getAllPendingWorktimeRegistries,
+} from "@/lib/db/queries/worktime-registry";
+import { getDeviceInfo } from "@/lib/api/device";
 
 export async function exportLogs() {
   if (!db) {
@@ -14,46 +23,71 @@ export async function exportLogs() {
     ...globalStore.getState(),
     odooClient: {},
   });
-  const { error: transError } = await attempt(() =>
-    db!.execSync("PRAGMA wal_checkpoint(FULL);"),
-  );
 
-  if (transError != null) {
-    globalStore.setState({ lastError: transError });
+  await ResultAsync.fromThrowable(async () => {
+    const { sessionData } = globalStore.getState();
+    if (sessionData == null) {
+      return;
+    }
+
+    await exportLogger.info("Información del dispositivo", await getDeviceInfo());
+
+    await exportLogger.info("Cambios pendientes por hacer", {
+      jobRegistry: await getAllPendingJobRegistries(sessionData.uid),
+      activityRegistry: await getAllPendingActivityRegistries(sessionData.uid),
+      taskRegistry: await getAllPendingTaskRegistries(sessionData.uid),
+      worktimeRegistry: await getAllPendingWorktimeRegistries(sessionData.uid),
+      worktimeJobRelation: await getAllPendingJobRegistrysOdooIdForUser(
+        sessionData.uid,
+      ),
+    });
+  })();
+
+  const transResult = Result.fromThrowable(
+    () => db!.execSync("PRAGMA wal_checkpoint(FULL);"),
+    (e) => transformError(e, "Error realizando un checkpoint de los logs"),
+  )();
+
+  if (transResult.isErr()) {
+    globalStore.setState({ lastError: transResult.error });
     return false;
   }
 
-  const isAvailableResult = await attemptAsync(() =>
+  const isAvailableResult = await ResultAsync.fromPromise(
     Sharing.isAvailableAsync(),
+    (e) =>
+      transformError(
+        e,
+        "Error consultando la disponibilidad de la función de compartir",
+      ),
   );
 
-  if (isAvailableResult.error != null) {
+  if (isAvailableResult.isErr()) {
     globalStore.setState({ lastError: isAvailableResult.error });
     return false;
   }
 
-  if (!isAvailableResult.data) {
+  if (!isAvailableResult.value) {
     return false;
   }
 
-  const file = new File(
-    `file://${Paths.join(defaultDatabaseDirectory, "logs.db")}`,
+  const shareResult = await ResultAsync.fromPromise(
+    Sharing.shareAsync(
+      `file://${Paths.join(defaultDatabaseDirectory, "logs.db")}`,
+      {
+        mimeType: "application/x-sqlite3",
+        dialogTitle: "Exportar logs",
+      },
+    ),
+    (e) => transformError(e, "Error exportando logs"),
   );
 
-  const shareResult = await attemptAsync(() =>
-    Sharing.shareAsync(file.uri, {
-      mimeType: "application/x-sqlite3",
-      dialogTitle: "Exportar logs",
-    }),
-  );
-
-  attempt(() => file.delete());
-  if (shareResult.error != null) {
+  if (shareResult.isErr()) {
     globalStore.setState({ lastError: shareResult.error });
     return false;
   }
 
-  return shareResult.error == null;
+  return shareResult.isOk();
 }
 
 type LoggerLevel = number;
@@ -146,6 +180,7 @@ export function setGlobalLevel(level: LoggerLevel) {
 
 const db = openDatabaseSync("logs.db");
 
+const maxLogAge = 86400000; // 1 day
 db.execSync(`
 PRAGMA journal_mode=WAL;
 CREATE TABLE IF NOT EXISTS logs (
@@ -156,7 +191,8 @@ CREATE TABLE IF NOT EXISTS logs (
   message TEXT,
   object TEXT
 );
-DELETE FROM logs;
+DELETE FROM logs WHERE date < ${new Date().valueOf() - maxLogAge};
+INSERT INTO logs (level, logger, message) VALUES ('MARKER','MARKER','------ APPLICATION START ------');
 `);
 
 export default levels;

@@ -19,11 +19,13 @@ import {
   upsertVehicles,
 } from "@/lib/db/actions/resources";
 import { Logger } from "@/lib/logger";
+import { ok, ResultAsync } from "neverthrow";
+import { transformError } from "../result";
 
 const logger = Logger.getLogger("SYNC::RESOURCES");
 
-export async function applyRemoteVehicleChange(vehicles: RemoteVehicle[]) {
-  return db.transaction(
+export function applyRemoteVehicleChange(vehicles: RemoteVehicle[]) {
+  const r = db.transaction(
     async (tx) => {
       logger.info("Actualizando vechículos");
       await upsertVehicles(vehicles, tx);
@@ -34,10 +36,14 @@ export async function applyRemoteVehicleChange(vehicles: RemoteVehicle[]) {
     },
     { behavior: transBehavior },
   );
+
+  return ResultAsync.fromPromise(r, (e) =>
+    transformError(e, "Error al actualizar vecículos"),
+  );
 }
 
-export async function applyRemoteCompanyChange(companies: RemoteCompany[]) {
-  return db.transaction(
+export function applyRemoteCompanyChange(companies: RemoteCompany[]) {
+  const r = db.transaction(
     async (tx) => {
       logger.info("Actualizando companías");
       await upsertCompanies(companies, tx);
@@ -48,10 +54,14 @@ export async function applyRemoteCompanyChange(companies: RemoteCompany[]) {
     },
     { behavior: transBehavior },
   );
+
+  return ResultAsync.fromPromise(r, (e) =>
+    transformError(e, "Error al actualizar companías"),
+  );
 }
 
-export async function applyRemoteUsersChange(users: RemoteUser[]) {
-  const currentUserId = await db.transaction(
+export function applyRemoteUsersChange(users: RemoteUser[]) {
+  const currentUserId = db.transaction(
     async (tx) => {
       logger.info("Actualizando usuarios");
       await upsertRemoteUsers(users, tx);
@@ -63,15 +73,22 @@ export async function applyRemoteUsersChange(users: RemoteUser[]) {
     { behavior: transBehavior },
   );
 
-  if (currentUserId !== undefined) {
-    await removeUserSession(currentUserId);
-  }
+  return ResultAsync.fromPromise(currentUserId, (e) =>
+    transformError(e, "Error al actualizar los usuarios actuales"),
+  ).andThen((c) => {
+    if (c !== undefined) {
+      return ResultAsync.fromPromise(removeUserSession(c), (e) =>
+        transformError(e, "Error al eliminar la sesión del usuario"),
+      );
+    }
+    return ok();
+  });
 }
 
-export async function applyRemoteItineraryChange(
+export function applyRemoteItineraryChange(
   itineraries: RemoteItinerary[],
 ) {
-  return db.transaction(
+  const r = db.transaction(
     async (tx) => {
       logger.info("Actualizando Itinerarios");
       await upsertItineraries(itineraries, tx);
@@ -81,5 +98,8 @@ export async function applyRemoteItineraryChange(
       );
     },
     { behavior: transBehavior },
+  );
+  return ResultAsync.fromPromise(r, (e) =>
+    transformError(e, "Error al actualizar itinerarios"),
   );
 }
