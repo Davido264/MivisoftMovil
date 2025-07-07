@@ -76,7 +76,7 @@ function ElementItem({
   const observationHref = {
     pathname: "/job-registry/observation",
     params: { jobRegistryId: item.id.toString() },
-  } as LinkProps["href"]
+  } as LinkProps["href"];
 
   return (
     <View className="p-4">
@@ -108,9 +108,7 @@ function ElementItem({
             }}
           />
         ) : (
-          <JobRegistryCard.ObservationFooter
-            href={observationHref}
-          />
+          <JobRegistryCard.ObservationFooter href={observationHref} />
         )}
       </JobRegistryCard>
     </View>
@@ -131,8 +129,8 @@ function Filters({ setFilter }: { setFilter: _setFilterFn }) {
   const setItinerary = useStore(itStore, (state) => state.setItinerary);
 
   const userid = useSession((session) => session.uid);
-  const [mine, setMine] = useState(true);
-  const [includeClosed, setIncludeClosed] = useState(false);
+  const [mine, setMine] = useState<boolean>(true);
+  const [includeClosed, setIncludeClosed] = useState<boolean>(false);
 
   useEffect(() => {
     setFilter(

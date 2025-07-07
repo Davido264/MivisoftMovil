@@ -2,7 +2,7 @@ import { Logger } from "@/lib/logger";
 import { countPending } from "@/lib/db/queries/utils";
 import { ApplicationState, globalStore } from "@/lib/store/application-state";
 import { syncItinerary, syncRegistries, syncResources } from "@/lib/sync";
-import { uploadJobRegistries } from "@/lib/upload/job-registry";
+import { retriggerJobRegistryStatusComputation, uploadJobRegistries } from "@/lib/upload/job-registry";
 import { uploadActivityRegistries } from "@/lib/upload/activity-registry";
 import { uploadTaskRegistries } from "@/lib/upload/task-registry";
 import {
@@ -52,6 +52,7 @@ export async function syncAll(force: boolean = false) {
     .andThen(() => uploadTaskRegistries(odooClient, sessionData.uid))
     .andThen(() => uploadWorktimeRegistry(odooClient, sessionData.uid))
     .andThen(() => linkRemoteWorktimeRegistry(odooClient, sessionData.uid))
+    .andThen(() => retriggerJobRegistryStatusComputation(odooClient, sessionData.uid))
     .andThen(() => uploadPhotos(odooClient))
     .map(() => logger.info("Subida de registros exitosa"))
     .mapErr((e) => transformError(e, "Error al sincronizar datos"));

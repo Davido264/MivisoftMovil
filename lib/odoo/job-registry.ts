@@ -41,6 +41,17 @@ export function createJobRegistry(client: OdooJSONRpc, record: RemoteJobReg) {
   );
 }
 
+export function writeEndDateTime(
+  client: OdooJSONRpc,
+  id: number,
+  endDateTime: string,
+) {
+  return ResultAsync.fromPromise(
+    _internalWriteDateTime(client, id, endDateTime),
+    (e) => transformError(e, "Error al actualizar la fecha de finalización"),
+  );
+}
+
 const odooModel = "technical_support.job_registry";
 async function _internalFetchJobRegistries(client: OdooJSONRpc, maxAge: Date) {
   const registries = await client.searchRead(
@@ -88,6 +99,14 @@ async function _internalWriteJobRegistry(
     score: record.score ? `${record.score}` : undefined,
   });
   return id;
+}
+
+async function _internalWriteDateTime(
+  client: OdooJSONRpc,
+  id: number,
+  endDateTime: string,
+) {
+  return await client.update(odooModel, id, { end_datetime: endDateTime });
 }
 
 async function _internalCreateJobRegistry(

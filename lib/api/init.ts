@@ -101,9 +101,10 @@ export function useInit() {
         state.lastError !== previousState.lastError &&
         state.lastError != null
       ) {
+        applicationLogger.error(state.lastError.message, state.lastError);
         if (
-          state.lastError.type === "SessionExpired" ||
-          state.lastError.type === "InvalidCredentials"
+          state.lastError.type !== "SessionExpired" &&
+          state.lastError.type !== "InvalidCredentials"
         ) {
           Toast.show({
             type: "error",
@@ -112,8 +113,6 @@ export function useInit() {
             swipeable: true,
             autoHide: true,
           });
-        } else {
-          applicationLogger.error(state.lastError.message, state.lastError);
         }
       }
 

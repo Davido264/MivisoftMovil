@@ -146,7 +146,7 @@ export default function RegisterActivityForm() {
             <form.SubmitButton
               className="flex-row gap-2 items-center justify-center"
               onSubmit={() =>
-                router.dismissTo({
+                router.replace({
                   pathname: "/job-registry/register-activity",
                   params: { jobregid },
                 })

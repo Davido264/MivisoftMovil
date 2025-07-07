@@ -84,6 +84,22 @@ export function getLatestOpenJobRegistryForUser(
     .limit(1);
 }
 
+export function getEndDateTimesOdooIdsAndIds(
+  jobRegistryIds: number[],
+  scope: Database = db,
+) {
+  return scope
+    .select({
+      endDateTime: jobRegistries_table.endDate,
+      odooId: jobRegistries_table.odooId,
+      localId: jobRegistries_table.id,
+    })
+    .from(jobRegistries_table)
+    .where(
+      sql`${jobRegistries_table.id} IN ${jobRegistryIds} AND ${jobRegistries_table.endDate} IS NOT NULL AND ${jobRegistries_table.odooId} IS NOT NULL`,
+    );
+}
+
 export function getObservationForJobRegistry(
   jobRegistryId: number,
   scope: Database = db,

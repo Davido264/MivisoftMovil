@@ -10,7 +10,7 @@ import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { sql } from "drizzle-orm";
 import { File } from "expo-file-system/next";
 import { err, ok, okAsync, ResultAsync } from "neverthrow";
-import { fetch } from 'expo/fetch';
+import { fetch } from "expo/fetch";
 
 const logger = Logger.getLogger("UPLOAD::PHOTO");
 
@@ -84,6 +84,7 @@ function uploadPhoto(client: OdooJSONRpc, photo: PhotoSelect, photof: File) {
 
   formData.append("model", photo.model);
   formData.append("identifier", photo.odooId!);
+  formData.append("name", photo.name);
 
   return ResultAsync.fromPromise(
     fetch(`${client.url}/technical_support/upload`, {
@@ -100,11 +101,14 @@ function uploadPhoto(client: OdooJSONRpc, photo: PhotoSelect, photof: File) {
       }
     }),
     (e) =>
-      transformError(e, "Error al subir foto", { photo, uploaded: {
-        uri: photof.uri,
-        type: blob.type,
-        name: photof.name,
-      } }),
+      transformError(e, "Error al subir foto", {
+        photo,
+        uploaded: {
+          uri: photof.uri,
+          type: blob.type,
+          name: photof.name,
+        },
+      }),
   );
 }
 
@@ -175,3 +179,4 @@ function markUploadedAndDeleteFile(
     (e) => transformError(e, "Error al eliminar la foto local", { photo }),
   )();
 }
+
