@@ -60,11 +60,11 @@ export default function WorktimeForm() {
         return;
       }
 
-      const isClosing = data[0].endDate == null
+      const isClosing = data[0]?.endDate == null;
       const ok = await registerWorktime(coords, value.comment, value.photos);
       if (ok) {
         if (isClosing) {
-          queueMicrotask(() => syncAll())
+          queueMicrotask(() => syncAll());
         }
         router.dismissTo("/");
       }
