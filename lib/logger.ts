@@ -1,9 +1,8 @@
 import { Paths } from "expo-file-system/next";
 import * as Sharing from "expo-sharing";
 import { defaultDatabaseDirectory, openDatabaseSync } from "expo-sqlite";
-import { transformError } from "@/lib/result";
+import { ApplicationError, transformError } from "@/lib/result";
 import { globalStore } from "@/lib/store/application-state";
-import { Result, ResultAsync } from "neverthrow";
 import { getAllPendingJobRegistries } from "@/lib/db/queries/job-registry";
 import { getAllPendingActivityRegistries } from "@/lib/db/queries/activity-registries";
 import { getAllPendingTaskRegistries } from "@/lib/db/queries/task-registries";
@@ -12,93 +11,72 @@ import {
   getAllPendingWorktimeRegistries,
 } from "@/lib/db/queries/worktime-registry";
 import { getDeviceInfo } from "@/lib/api/device";
+import Toast from "react-native-toast-message";
 
 export async function exportLogs() {
   if (!db) {
     return false;
   }
 
-  await exportLogger.info("Exportando logs...");
-  await exportLogger.info("Snapshot del estado de la aplicacióñ", {
+  await exportLogger.verbose("Exportando logs...");
+  await exportLogger.verbose("Snapshot del estado de la aplicación", {
     ...globalStore.getState(),
     odooClient: {},
   });
 
-  await ResultAsync.fromThrowable(async () => {
+  try {
     const { sessionData } = globalStore.getState();
-    if (sessionData == null) {
-      return;
+    if (sessionData != null) {
+      await exportLogger.verbose(
+        "Información del dispositivo",
+        await getDeviceInfo().catch(() => ({})),
+      );
+
+      await exportLogger.verbose("Cambios pendientes por hacer", {
+        jobRegistry: await getAllPendingJobRegistries(sessionData.uid),
+        activityRegistry: await getAllPendingActivityRegistries(
+          sessionData.uid,
+        ),
+        taskRegistry: await getAllPendingTaskRegistries(sessionData.uid),
+        worktimeRegistry: await getAllPendingWorktimeRegistries(
+          sessionData.uid,
+        ),
+        worktimeJobRelation: await getAllPendingJobRegistrysOdooIdForUser(
+          sessionData.uid,
+        ),
+      });
     }
 
-    await exportLogger.info("Información del dispositivo", await getDeviceInfo());
+    db!.execSync("PRAGMA wal_checkpoint(FULL);");
 
-    await exportLogger.info("Cambios pendientes por hacer", {
-      jobRegistry: await getAllPendingJobRegistries(sessionData.uid),
-      activityRegistry: await getAllPendingActivityRegistries(sessionData.uid),
-      taskRegistry: await getAllPendingTaskRegistries(sessionData.uid),
-      worktimeRegistry: await getAllPendingWorktimeRegistries(sessionData.uid),
-      worktimeJobRelation: await getAllPendingJobRegistrysOdooIdForUser(
-        sessionData.uid,
-      ),
-    });
-  })();
+    if (!(await Sharing.isAvailableAsync())) {
+      return false;
+    }
 
-  const transResult = Result.fromThrowable(
-    () => db!.execSync("PRAGMA wal_checkpoint(FULL);"),
-    (e) => transformError(e, "Error realizando un checkpoint de los logs"),
-  )();
-
-  if (transResult.isErr()) {
-    globalStore.setState({ lastError: transResult.error });
-    return false;
-  }
-
-  const isAvailableResult = await ResultAsync.fromPromise(
-    Sharing.isAvailableAsync(),
-    (e) =>
-      transformError(
-        e,
-        "Error consultando la disponibilidad de la función de compartir",
-      ),
-  );
-
-  if (isAvailableResult.isErr()) {
-    globalStore.setState({ lastError: isAvailableResult.error });
-    return false;
-  }
-
-  if (!isAvailableResult.value) {
-    return false;
-  }
-
-  const shareResult = await ResultAsync.fromPromise(
-    Sharing.shareAsync(
+    await Sharing.shareAsync(
       `file://${Paths.join(defaultDatabaseDirectory, "logs.db")}`,
       {
         mimeType: "application/x-sqlite3",
         dialogTitle: "Exportar logs",
       },
-    ),
-    (e) => transformError(e, "Error exportando logs"),
-  );
-
-  if (shareResult.isErr()) {
-    globalStore.setState({ lastError: shareResult.error });
+    );
+    return true;
+  } catch (error) {
+    exportLogger.error(transformError(error, "Error exportando los logs"));
     return false;
   }
-
-  return shareResult.isOk();
 }
 
 type LoggerLevel = number;
 const loggers: Map<string, Logger> = new Map<string, Logger>();
 export const levels = Object.freeze({
-  info: 1 as LoggerLevel,
+  info: 0 as LoggerLevel,
+  verbose: 1 as LoggerLevel,
   warn: 2 as LoggerLevel,
   error: 3 as LoggerLevel,
 });
 
-let defaultLevel: LoggerLevel = levels.info;
+let defaultLevel: LoggerLevel = levels.verbose;
 
 export type LogEntry = {
   level: LoggerLevel;
@@ -110,9 +88,11 @@ export type LogEntry = {
 
 export class Logger {
   #name: string;
+  toastOnWarn: boolean;
 
   private constructor(name: string) {
     this.#name = name;
+    this.toastOnWarn = false;
   }
 
   static getLogger(name: string) {
@@ -148,8 +128,8 @@ export class Logger {
     } catch {}
   }
 
-  info(msg: string, obj: any | undefined = undefined) {
-    if (defaultLevel > levels.info) {
+  verbose(msg: string, obj: any | undefined = undefined) {
+    if (defaultLevel > levels.verbose) {
       return;
     }
     console.log(this.#formatMsg(msg, obj));
@@ -164,12 +144,34 @@ export class Logger {
     this.#writeDb("WARN", msg, obj);
   }
 
-  error(msg: string, obj: any | undefined = undefined) {
+  error(error: ApplicationError) {
     if (defaultLevel > levels.error) {
       return;
     }
-    console.error(this.#formatMsg(msg, obj));
-    this.#writeDb("ERROR", msg, obj);
+    console.error(this.#formatMsg(error.message, error));
+    Toast.show({
+      type: "error",
+      text1: "Error",
+      text2: error.message,
+      swipeable: true,
+      autoHide: true,
+    });
+    globalStore.setState({ lastError: error });
+    this.#writeDb("ERROR", error.message, error);
+  }
+
+  info(msg: string, obj: any | undefined = undefined) {
+    if (defaultLevel > levels.info) {
+      return;
+    }
+    console.log(this.#formatMsg(msg, obj));
+    Toast.show({
+      type: "success",
+      text1: msg,
+      swipeable: true,
+      autoHide: true,
+    });
+    this.#writeDb("INFO", msg, obj);
   }
 }
 

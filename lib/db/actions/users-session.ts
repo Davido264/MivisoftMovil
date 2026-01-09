@@ -24,20 +24,20 @@ export async function removeSessions(scope: Database = db) {
 }
 
 export async function removeUserSession(userId: number, scope: Database = db) {
-  const currentSessionId = await getCurrentUserId();
+  const currentUserId = await getCurrentUserId();
 
   await scope
     .update(users_table)
     .set({ sid: "" })
     .where(sql`${users_table.id} = ${userId}`);
 
-  if (currentSessionId === userId) {
+  if (currentUserId === userId) {
     await AsyncStorage.removeItem(asyncStorageKey);
   }
 }
 
 export async function persist(session: OdooSession, scope: Database = db) {
-  logger.info("Persistiendo sesión actual");
+  logger.verbose("Persistiendo sesión actual");
   const updateObj = {
     name: session.name,
     company: session.company,

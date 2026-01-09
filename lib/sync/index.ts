@@ -49,7 +49,7 @@ export function syncRegistries(
     "hours",
   );
 
-  logger.info(
+  logger.verbose(
     `Iniciando sincronización de registros desde ${formatDateTime(maxAge)}`,
   );
 
@@ -72,14 +72,14 @@ export function syncRegistries(
     )
     .andThen(([, t]) => reconciliateTaskRegistries(t))
     .map(() => updateLastSync("registry"))
-    .map(() => logger.info("Sincronización de registros exitosa"));
+    .map(() => logger.verbose("Sincronización de registros exitosa"));
 }
 
 export function syncResources(
   odooClient: OdooJSONRpc,
   sessionData: OdooSession,
 ) {
-  logger.info("Iniciando Sincronización de recursos");
+  logger.verbose("Iniciando Sincronización de recursos");
 
   return ResultAsync.combine([
     fetchVehicles(odooClient),
@@ -95,14 +95,14 @@ export function syncResources(
       ),
     )
     .map(() => updateLastSync("resource"))
-    .map(() => logger.info("Sincronización de recursos exitosa"));
+    .map(() => logger.verbose("Sincronización de recursos exitosa"));
 }
 
 export function syncItinerary(
   odooClient: OdooJSONRpc,
   sessionData: OdooSession,
 ) {
-  logger.info("Iniciando Sincronización de itinerarios");
+  logger.verbose("Iniciando Sincronización de itinerarios");
 
   return fetchItineraries(odooClient)
     .andThen((i) =>
@@ -119,7 +119,7 @@ export function syncItinerary(
     )
     .andThen(([, t]) => applyRemoteTaskChange(t))
     .map(() => updateLastSync("itinerary"))
-    .map(() => logger.info("Sincronización de itinerarios exitosa"));
+    .map(() => logger.verbose("Sincronización de itinerarios exitosa"));
 }
 
 function itineraryIds(itineraries: RemoteItinerary[]) {

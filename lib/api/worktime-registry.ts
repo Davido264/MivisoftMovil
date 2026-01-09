@@ -10,8 +10,7 @@ import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-reg
 import { WorktimeRegistryInsert } from "@/lib/db/schema/worktime-registry";
 import { Logger } from "@/lib/logger";
 import { transformError } from "@/lib/result";
-import { ApplicationState, globalStore } from "@/lib/store/application-state";
-import { ResultAsync } from "neverthrow";
+import { globalStore } from "@/lib/store/application-state";
 import assert from "@/lib/assert";
 
 const logger = Logger.getLogger("API::WORKTIME");
@@ -30,34 +29,24 @@ export async function registerWorktime(
   const timeZone = sessionData.tz;
   const date = new Date();
 
-  logger.info("Obteniendo último registro de tiempo trabajado");
-  const headResult = await ResultAsync.fromPromise(
-    getCurrentWorktimeRegistryForUser(userId).then((result) =>
-      result.length > 0 ? result[0] : undefined,
-    ),
-    (e) =>
-      transformError(e, "Error obteniendo el registro de tiempo trabajado"),
-  );
-
-  if (headResult.isErr()) {
-    globalStore.setState({ lastError: headResult.error });
-    return false;
-  }
-
-  const head = headResult.value;
-  const [worktimeRegistry, hasToInsert] = generateCurrentWorktimeRegistry(
-    date,
-    timeZone,
-    userId,
-    head,
-    location,
-    observation,
-  );
-
-  const result = await ResultAsync.fromPromise(
-    db.transaction(
+  try {
+    await db.transaction(
       async (tx) => {
-        logger.info("Guardando registro de tiempo trabajado");
+        logger.verbose("Obteniendo último registro de tiempo trabajado");
+        const head = await getCurrentWorktimeRegistryForUser(userId).then(
+          (result) => (result.length > 0 ? result[0] : undefined),
+        );
+
+        const [worktimeRegistry, hasToInsert] = generateCurrentWorktimeRegistry(
+          date,
+          timeZone,
+          userId,
+          head,
+          location,
+          observation,
+        );
+
+        logger.verbose("Guardando registro de tiempo trabajado");
         let id: number = 0;
         if (hasToInsert) {
           id = await insertWorktimeRegistry(worktimeRegistry, false, tx);
@@ -72,7 +61,7 @@ export async function registerWorktime(
         }
 
         const photoRegistries = photos.map((p, i) => ({
-          name: `Evidencia de jornada ${i + 1}. ${formatDateTime(date)}`,
+          name: `Evidencia de jornada ${i + 1} ${formatDateTime(date)}`,
           model: "technical_support.worktime_registry",
           uri: p,
           worktimeRegistryId: id,
@@ -80,28 +69,29 @@ export async function registerWorktime(
         }));
 
         await storePhotos(photoRegistries, tx);
+
+        globalStore.setState({
+          pendingChanges: await countPending(userId).catch(() => 0),
+        });
+        logger.info("Jornada registrada exitosamente");
       },
       { behavior: transBehavior },
-    ),
-    (e) =>
-      transformError(e, "Error al registrar jornada", {
-        worktimeRegistry,
+    );
+
+    return true;
+  } catch (error) {
+    logger.error(
+      transformError(error, "Error al registrar jornada", {
+        userId,
+        date,
+        location,
+        observation,
         photos,
       }),
-  );
+    );
 
-  const newState = {
-    pendingChanges: await countPending(userId).catch(() => 0),
-  } as ApplicationState;
-
-  if (result.isErr()) {
-    newState.lastError = result.error;
-  } else {
-    logger.info("Jornada registrada exitosamente");
+    return false;
   }
-
-  globalStore.setState(newState);
-  return result.isOk();
 }
 
 function generateCurrentWorktimeRegistry(

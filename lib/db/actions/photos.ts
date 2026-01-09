@@ -26,12 +26,12 @@ export async function storePhotos(p: PhotoInsert[], scope: Database) {
 export async function deleteOrphanPhotos(scope: Database) {
   for (const file of Paths.document.list()) {
     if (file instanceof Directory) {
-      logger.info(`Omitiendo ${file.name}`, file);
+      logger.verbose(`Omitiendo ${file.name}`, file);
       continue;
     }
 
     if (file.extension == null) {
-      logger.info(`Omitiendo archivo sin extensión ${file.name}`, file);
+      logger.verbose(`Omitiendo archivo sin extensión ${file.name}`, file);
       continue;
     }
 
@@ -43,14 +43,14 @@ export async function deleteOrphanPhotos(scope: Database) {
       .then((result) => result.length > 0);
 
     if (exists) {
-      logger.info(
+      logger.verbose(
         "La imagen si existe en la base de datos, omitiendo...",
         file.uri,
       );
       continue;
     }
 
-    logger.info("Eliminando imagen huérfana", file);
+    logger.verbose("Eliminando imagen huérfana", file);
     file.delete();
   }
 }
@@ -60,7 +60,7 @@ export async function setSeverIdForJobRegistryImage(
   odooId: string,
   scope: Database = db,
 ) {
-  logger.info("Actualizando el id del servidor", {
+  logger.verbose("Actualizando el id del servidor", {
     before: null,
     after: odooId,
   });
@@ -75,7 +75,7 @@ export async function setServerIdForActivityRegistryImage(
   odooId: string,
   scope: Database = db,
 ) {
-  logger.info("Actualizando el id del servidor", {
+  logger.verbose("Actualizando el id del servidor", {
     before: null,
     after: odooId,
   });
@@ -90,7 +90,7 @@ export async function setServerIdForWorktimeRegistryImage(
   odooId: string,
   scope: Database = db,
 ) {
-  logger.info("Actualizando el id del servidor", {
+  logger.verbose("Actualizando el id del servidor", {
     before: null,
     after: odooId,
   });

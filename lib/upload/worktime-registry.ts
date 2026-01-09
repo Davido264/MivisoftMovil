@@ -25,7 +25,7 @@ import { transformError, wrapMultiErrors } from "@/lib/result";
 const logger = Logger.getLogger("UPLOAD::WORKTIME-REGISTRY");
 
 export function uploadWorktimeRegistry(client: OdooJSONRpc, userId: number) {
-  logger.info("Subiendo registros pendientes");
+  logger.verbose("Subiendo registros pendientes");
 
   return ResultAsync.fromPromise(
     getAllPendingWorktimeRegistries(userId, db),
@@ -37,7 +37,7 @@ export function uploadWorktimeRegistry(client: OdooJSONRpc, userId: number) {
         Object.values(grouped).map((worktimes) => upload(worktimes, client)),
       ),
     )
-    .map(() => logger.info("Subidas exitosas"))
+    .map(() => logger.verbose("Subidas exitosas"))
     .mapErr((e) => wrapMultiErrors(e, "Error subiendo registros"));
 }
 
@@ -45,7 +45,7 @@ export function linkRemoteWorktimeRegistry(
   client: OdooJSONRpc,
   userId: number,
 ) {
-  logger.info("Vinculando registros pendientes");
+  logger.verbose("Vinculando registros pendientes");
 
   return ResultAsync.fromPromise(
     getAllPendingJobRegistrysOdooIdForUser(userId, db),
@@ -78,7 +78,7 @@ export function linkRemoteWorktimeRegistry(
         ),
       ),
     )
-    .map(() => logger.info("Subidas exitosas"))
+    .map(() => logger.verbose("Subidas exitosas"))
     .mapErr((e) => wrapMultiErrors(e, "Error subiendo registros"));
 }
 

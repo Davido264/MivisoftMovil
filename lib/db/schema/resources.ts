@@ -14,6 +14,7 @@ export const companies_table = sqliteTable("ts_company", {
 export const vehicles_table = sqliteTable("ts_vehicles", {
   id: integer().primaryKey({ autoIncrement: true }),
   name: text().notNull(),
+  companyId: integer()
 });
 
 export const vehicles_companies_table = sqliteTable(

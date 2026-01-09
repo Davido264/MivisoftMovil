@@ -1,5 +1,8 @@
 import db, { Database } from "@/lib/db";
-import { jobRegistries_table } from "@/lib/db/schema/job-registry";
+import {
+  jobRegistries_table,
+  JobRegistryInsert,
+} from "@/lib/db/schema/job-registry";
 import { activityRegistries_table } from "@/lib/db/schema/activity-registry";
 import { taskRegistries_table } from "@/lib/db/schema/task-registry";
 import { users_table } from "@/lib/db/schema/user-session";
@@ -138,7 +141,7 @@ export function getAllPendingJobRegistries(
     .select()
     .from(jobRegistries_table)
     .where(
-      sql`${jobRegistries_table.odooId} IS NULL OR ${jobRegistries_table.lastmod} > ${jobRegistries_table.lastsync}`,
+      sql`${jobRegistries_table.odooId} IS NULL OR ${jobRegistries_table.lastmod} > ${jobRegistries_table.lastsync} AND ${jobRegistries_table.userId} = ${userId}`,
     )
     .orderBy(sql`${jobRegistries_table.lastmod} DESC`);
 }

@@ -50,7 +50,7 @@ export function reconciliate(
         return;
       }
 
-      assert.notNull(local.lastsync);
+      local.lastsync ??= new Date(0);
       if (local.lastmod <= local.lastsync && remote.lastmod <= local.lastsync) {
         return; // all synced
       }

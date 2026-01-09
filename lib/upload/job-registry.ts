@@ -26,7 +26,7 @@ const logger = Logger.getLogger("UPLOAD::JOB-REGISTRY");
 const retriggersQueueKey = "job-registry::retriggers::queue";
 
 export function uploadJobRegistries(client: OdooJSONRpc, userId: number) {
-  logger.info("Subiendo registros pendientes");
+  logger.verbose("Subiendo registros pendientes");
 
   return ResultAsync.fromPromise(getAllPendingJobRegistries(userId, db), (e) =>
     transformError(e, "Error al obtener registros pendientes"),
@@ -36,7 +36,7 @@ export function uploadJobRegistries(client: OdooJSONRpc, userId: number) {
         jobs.map((j) => uploadRegistry(j, client)),
       ),
     )
-    .map(() => logger.info("Subida exitosa"))
+    .map(() => logger.verbose("Subida exitosa"))
     .mapErr((e) => wrapMultiErrors(e, "Error al subir registros"));
 }
 
@@ -44,7 +44,7 @@ export function retriggerJobRegistryStatusComputation(
   client: OdooJSONRpc,
   userId: number,
 ) {
-  logger.info("Recalculando status");
+  logger.verbose("Recalculando status");
   return ResultAsync.fromSafePromise(
     AsyncStorage.getItem(retriggersQueueKey).then((r) =>
       r != null ? (JSON.parse(r) as number[]) : [],
@@ -72,6 +72,12 @@ export function retriggerJobRegistryStatusComputation(
         r.map((i) =>
           updateEndDateTime(i.endDateTime, i.odooId, i.localId, client),
         ),
+      ),
+    )
+    .andThen(() =>
+      ResultAsync.fromPromise(
+        AsyncStorage.setItem(retriggersQueueKey, JSON.stringify([])),
+        (e) => transformError(e, "No se pudo vaciar la cola"),
       ),
     );
 }

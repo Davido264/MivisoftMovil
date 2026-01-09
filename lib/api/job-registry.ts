@@ -7,10 +7,9 @@ import {
   insertJobRegistry,
   updateJobRegistry,
 } from "@/lib/db/actions/job-registry";
-import { ApplicationState, globalStore } from "@/lib/store/application-state";
+import { globalStore } from "@/lib/store/application-state";
 import { countPending } from "@/lib/db/queries/utils";
 import { JobRegistryInsert } from "@/lib/db/schema/job-registry";
-import { ResultAsync } from "neverthrow";
 import { addJobRegistryToWorktimeRegistry } from "@/lib/db/actions/worktime-registry";
 import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
 import assert from "@/lib/assert";
@@ -41,24 +40,24 @@ export async function startJob(
     observation,
   } as JobRegistryInsert;
 
-  const result = await ResultAsync.fromPromise(
-    db.transaction(
+  try {
+    await db.transaction(
       async (tx) => {
-        logger.info("Actualizando registro de trabajo");
+        logger.verbose("Actualizando registro de trabajo");
         const id = await insertJobRegistry(jobRegistry, false, tx);
 
         const photos = images.map((img, i) => ({
-          name: `Evidencia de trabajo ${i + 1}. ${formatDateTime(startDate)}`,
+          name: `Evidencia de trabajo ${i + 1} ${formatDateTime(startDate)}`,
           model: "technical_support.job_registry",
           jobRegistryId: id,
           uri: img,
           userId: sessionData.uid,
         }));
 
-        logger.info("Almacenando imágenes");
+        logger.verbose("Almacenando imágenes");
         await storePhotos(photos, tx);
 
-        logger.info("Consultando jornada actual");
+        logger.verbose("Consultando jornada actual");
         const worktimeRegistryDay = await getCurrentWorktimeRegistryForUser(
           sessionData.uid,
           tx,
@@ -73,28 +72,25 @@ export async function startJob(
           sessionData.uid,
           tx,
         );
+
+        globalStore.setState({
+          pendingChanges: await countPending(userId, tx).catch(() => 0),
+        });
       },
       { behavior: transBehavior },
-    ),
-    (e) =>
-      transformError(e, "Error al iniciar el trabajo", {
+    );
+
+    logger.verbose("Trabajo iniciado exitosamente");
+    return true;
+  } catch (error) {
+    logger.error(
+      transformError(error, "Error al iniciar el trabajo", {
         jobRegistry,
         photos: images,
       }),
-  );
-
-  const newState = {
-    pendingChanges: await countPending(userId).catch(() => 0),
-  } as ApplicationState;
-
-  if (result.isErr()) {
-    newState.lastError = result.error;
-  } else {
-    logger.info("Trabajo iniciado exitosamente");
+    );
+    return false;
   }
-
-  globalStore.setState(newState);
-  return result.isOk();
 }
 
 export async function finishJob(
@@ -118,10 +114,10 @@ export async function finishJob(
     observation,
   } as Partial<JobRegistryInsert>;
 
-  const result = await ResultAsync.fromPromise(
-    db.transaction(
+  try {
+    await db.transaction(
       async (tx) => {
-        logger.info("Actualizando registro de trabajo");
+        logger.verbose("Actualizando registro de trabajo");
         await updateJobRegistry(jobRegistryId, update, false, tx);
 
         const signRegistry = [
@@ -135,7 +131,7 @@ export async function finishJob(
           },
         ];
 
-        logger.info("Almacenando firma e imágenes");
+        logger.verbose("Almacenando firma e imágenes");
         await storePhotos(signRegistry, tx);
 
         const photos = images.map((img, i) => ({
@@ -148,7 +144,7 @@ export async function finishJob(
 
         await storePhotos(photos, tx);
 
-        logger.info("Consultando jornada actual");
+        logger.verbose("Consultando jornada actual");
         const worktimeRegistryDay = await getCurrentWorktimeRegistryForUser(
           sessionData.uid,
           tx,
@@ -163,27 +159,23 @@ export async function finishJob(
           sessionData.uid,
           tx,
         );
+
+        globalStore.setState({
+          pendingChanges: await countPending(userId, tx).catch(() => 0),
+        });
       },
       { behavior: transBehavior },
-    ),
-    (e) =>
-      transformError(e, "Error al finalizar el trabajo", {
+    );
+    logger.verbose("Trabajo finalizado exitosamente");
+    return true;
+  } catch (error) {
+    logger.error(
+      transformError(error, "Error al finalizar el trabajo", {
         jobRegistryId,
         update,
         photos: images,
       }),
-  );
-
-  const newState = {
-    pendingChanges: await countPending(userId).catch(() => 0),
-  } as ApplicationState;
-
-  if (result.isErr()) {
-    newState.lastError = result.error;
-  } else {
-    logger.info("Trabajo finalizado exitosamente");
+    );
+    return false;
   }
-
-  globalStore.setState(newState);
-  return result.isOk();
 }

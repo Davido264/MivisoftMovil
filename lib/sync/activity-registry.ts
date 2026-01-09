@@ -10,7 +10,7 @@ import {
   updateActivityRegistry,
   upsertActivityRegistry,
 } from "@/lib/db/actions/activity-registry";
-import { getLocalJobRegistryFromOdooId } from "@/lib/db/queries/job-registry";
+import { getLocalJobRegistryFromOdooId, searchOfflineIdentical as searchOfflineIdenticalJobRegistry } from "@/lib/db/queries/job-registry";
 import {
   deleteNonRemobeActivities,
   upsertActivities,
@@ -58,7 +58,7 @@ export function reconciliateActivityRegistries(
           continue;
         }
 
-        assert.notNull(local.lastsync);
+        local.lastsync ??= new Date(0);
         if (
           local.lastmod <= local.lastsync &&
           remote.lastmod <= local.lastsync

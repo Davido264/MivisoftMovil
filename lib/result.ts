@@ -17,13 +17,29 @@ export const ErrorTypes = [
 
 export type ErrorType = (typeof ErrorTypes)[number];
 
-export type ApplicationError = {
+export class ApplicationError extends Error {
   type: ErrorType;
-  message: string;
   originalMessage?: string;
-  original?: Error;
   context?: any;
-};
+
+  constructor(
+    type: ErrorType,
+    message: string,
+    context?: any,
+    original?: Error,
+  ) {
+    super(message);
+    this.type = type;
+    this.name = `ApplicationError/${type}`;
+    this.cause = original;
+    this.originalMessage = original?.message;
+    this.context = context;
+  }
+
+  toString() {
+    return this.message;
+  }
+}
 
 export function wrapMultiErrors(
   e: ApplicationError | ApplicationError[],
@@ -31,11 +47,12 @@ export function wrapMultiErrors(
   context: any = undefined,
 ): ApplicationError {
   if (Array.isArray(e)) {
-    return {
-      type: "MultipleErrors",
-      message,
-      context: { context, errors: e },
-    };
+    return new ApplicationError(
+      "MultipleErrors",
+      "Multiple errors occurred",
+      { context, errors: e },
+      undefined,
+    );
   } else {
     return transformError(e, message, context);
   }
@@ -43,65 +60,42 @@ export function wrapMultiErrors(
 
 export function transformError(
   e: any,
-  message: string,
+  message?: string,
   context: any = undefined,
 ): ApplicationError {
   if (e instanceof AssersionError) {
-    return { type: "AssersionError", message: e.message, context };
+    return new ApplicationError(
+      "AssersionError",
+      message ?? e.message,
+      context,
+      e,
+    );
   }
 
-  if (
-    typeof e.type === "string" &&
-    ErrorTypes.includes(e.type) &&
-    typeof e.message === "string"
-  ) {
-    return {
-      ...e,
-      message,
-      originalMessage: e.message,
-      original: e
-    } as ApplicationError;
+  if (e instanceof ApplicationError) {
+    return new ApplicationError(e.type, message ?? e.message, context, e);
   }
 
   const errorMessage = e instanceof Error ? e.message : String(e);
   if (e instanceof TransactionRollbackError) {
-    return {
-      message,
-      type: "TransactionRollbackError",
-      originalMessage: errorMessage,
-      original: e,
+    return new ApplicationError(
+      "TransactionRollbackError",
+      message ?? errorMessage,
       context,
-    };
+      e,
+    );
   }
 
   if (isNetworkError(errorMessage)) {
-    return {
-      message,
-      type: "NetworkError",
-      originalMessage: errorMessage,
-      original: e,
-      context,
-    };
+    return new ApplicationError("NetworkError", message, context, e);
   }
 
   if (isSessionExpired(errorMessage)) {
-    return {
-      message,
-      type: "SessionExpired",
-      originalMessage: errorMessage,
-      original: e,
-      context,
-    };
+    return new ApplicationError("SessionExpired", message, context, e);
   }
 
   if (isInvalidCredentials(errorMessage)) {
-    return {
-      message,
-      type: "InvalidCredentials",
-      originalMessage: errorMessage,
-      original: e,
-      context,
-    };
+    return new ApplicationError("InvalidCredentials", message, context, e);
   }
 
   if (
@@ -109,30 +103,23 @@ export function transformError(
     ("name" in e && e.name === "DrizzleError")
   ) {
     if ("name" in e && e.name === "DrizzleError") {
-      return {
+      return new ApplicationError(
+        "LocalDatabaseInternalError",
         message,
-        type: "LocalDatabaseInternalError",
-        originalMessage: e?.cause?.stack.split("\n    at")[0] ?? errorMessage,
-        original: e,
         context,
-      };
+        e,
+      );
     }
-    return {
+
+    return new ApplicationError(
+      "LocalDatabaseInternalError",
       message,
-      type: "LocalDatabaseInternalError",
-      originalMessage: errorMessage,
-      original: e,
       context,
-    };
+      e,
+    );
   }
 
-  return {
-    message,
-    type: "UnknownError",
-    originalMessage: errorMessage,
-    original: e,
-    context,
-  };
+  return new ApplicationError("UnknownError", message, context, e);
 }
 
 function isNetworkError(errormsg: string) {

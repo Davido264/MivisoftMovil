@@ -15,7 +15,7 @@ import { fetch } from "expo/fetch";
 const logger = Logger.getLogger("UPLOAD::PHOTO");
 
 export function uploadPhotos(client: OdooJSONRpc, scope: Database = db) {
-  logger.info("Iniciando subida de fotos");
+  logger.verbose("Iniciando subida de fotos");
   return ResultAsync.fromPromise(
     scope
       .select()
@@ -53,7 +53,7 @@ async function _internalUploadPhotos(
   const errors = [] as ApplicationError[];
 
   for (const batch of batches) {
-    logger.info(`Subiendo lote de ${batch.length} fotos`);
+    logger.verbose(`Subiendo lote de ${batch.length} fotos`);
     for (const [p, pf] of batch) {
       const rh = await updateHorphanPhotos(p, pf, scope);
 

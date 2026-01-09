@@ -5,9 +5,8 @@ import { storePhotos } from "@/lib/db/actions/photos";
 import { formatDateTime } from "@/lib/date";
 import { upsertActivityRegistry } from "@/lib/db/actions/activity-registry";
 import { insertTaskRegistries } from "@/lib/db/actions/task-registry";
-import { ApplicationState, globalStore } from "@/lib/store/application-state";
+import { globalStore } from "@/lib/store/application-state";
 import { countPending } from "@/lib/db/queries/utils";
-import { ResultAsync } from "neverthrow";
 import { ActivityRegistryInsert } from "@/lib/db/schema/activity-registry";
 import { PhotoInsert } from "@/lib/db/schema/photos";
 import { TaskRegistryInsert } from "@/lib/db/schema/task-registry";
@@ -48,10 +47,10 @@ export async function registerActivity(
     userId: sessionData.uid,
   } as ActivityRegistryInsert;
 
-  const result = await ResultAsync.fromPromise(
-    db.transaction(
+  try {
+    await db.transaction(
       async (tx) => {
-        logger.info("Creando o actualizando registro de actividad");
+        logger.verbose("Creando o actualizando registro de actividad");
         const id = await upsertActivityRegistry(activityRegistry, false, tx);
 
         const photoRegistries = photos.map(
@@ -66,7 +65,7 @@ export async function registerActivity(
             }) as PhotoInsert,
         );
 
-        logger.info("Almacenando imágenes");
+        logger.verbose("Almacenando imágenes");
         await storePhotos(photoRegistries, tx);
 
         if (tasks.length !== 0) {
@@ -82,11 +81,11 @@ export async function registerActivity(
               }) as TaskRegistryInsert,
           );
 
-          logger.info("Creando registros de tareas");
+          logger.verbose("Creando registros de tareas");
           await insertTaskRegistries(taskInsert, false, tx);
         }
 
-        logger.info("Consultando jornada actual");
+        logger.verbose("Consultando jornada actual");
         const worktimeRegistryDay = await getCurrentWorktimeRegistryForUser(
           sessionData.uid,
           tx,
@@ -103,25 +102,26 @@ export async function registerActivity(
         );
       },
       { behavior: transBehavior },
-    ),
-    (e) =>
-      transformError(e, "Error al registrar actividad", {
-        activity: activityRegistry,
-        photos,
-        tasks,
-      }),
-  );
+    );
 
-  const newState = {
-    pendingChanges: await countPending(userId).catch(() => 0),
-  } as ApplicationState;
+    globalStore.setState({
+      pendingChanges: await countPending(userId).catch(() => 0),
+    });
 
-  if (result.isErr()) {
-    newState.lastError = result.error;
-  } else {
-    logger.info("Registro de actividad exitoso");
+    logger.verbose("Registro de actividad exitoso");
+    return true;
+  } catch (e) {
+    const err = transformError(e, "Error al registrar actividad", {
+      activity: activityRegistry,
+      photos,
+      tasks,
+    });
+
+    globalStore.setState({
+      pendingChanges: await countPending(userId).catch(() => 0),
+      lastError: err,
+    });
+
+    return false;
   }
-
-  globalStore.setState(newState);
-  return result.isOk();
 }

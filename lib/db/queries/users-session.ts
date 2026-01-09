@@ -13,19 +13,19 @@ export async function getCurrentUserId() {
   );
 }
 
-export async function getSessionId(userId: number, scope: Database = db) {
-  return scope
-    .select({ sid: users_table.sid })
-    .from(users_table)
-    .where(sql`${users_table.id} = ${userId}`)
-    .then((e) => (e.length > 0 ? e[0].sid : null));
-}
+export async function getSession(
+  userId: number | undefined = undefined,
+  scope: Database = db,
+) {
+  const uid = userId !== undefined ? userId : await getCurrentUserId();
+  if (uid == null) {
+    return undefined;
+  }
 
-export async function getSession(userId: number, scope: Database = db) {
-  return db
+  return scope
     .select()
     .from(users_table)
-    .where(sql`${users_table.id} = ${userId}`)
+    .where(sql`${users_table.id} = ${uid}`)
     .then((e) =>
       e.length > 0
         ? ({

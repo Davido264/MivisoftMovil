@@ -17,7 +17,7 @@ import { transformError } from "../result";
 const logger = Logger.getLogger("API::SYNC");
 
 export async function syncAll(force: boolean = false) {
-  logger.info("Iniciando sincronización general");
+  logger.verbose("Iniciando sincronización general");
 
   const { odooClient, sessionData, isSyncing } = globalStore.getState();
 
@@ -26,7 +26,7 @@ export async function syncAll(force: boolean = false) {
   }
 
   globalStore.setState({ isSyncing: true });
-  logger.info("Iniciando descarga de registros");
+  logger.verbose("Iniciando descarga de registros");
 
   const [resourcesDirty, itinerariesDirty, registriesDirty] = await Promise.all(
     [isDirty("resource"), isDirty("itinerary"), isDirty("registry")],
@@ -45,8 +45,8 @@ export async function syncAll(force: boolean = false) {
         ? syncRegistries(odooClient, sessionData)
         : okAsync(),
     )
-    .map(() => logger.info("Descarga de registros exitosa"))
-    .map(() => logger.info("Iniciando subida de registros"))
+    .map(() => logger.verbose("Descarga de registros exitosa"))
+    .map(() => logger.verbose("Iniciando subida de registros"))
     .andThen(() => uploadJobRegistries(odooClient, sessionData.uid))
     .andThen(() => uploadActivityRegistries(odooClient, sessionData.uid))
     .andThen(() => uploadTaskRegistries(odooClient, sessionData.uid))
@@ -54,7 +54,7 @@ export async function syncAll(force: boolean = false) {
     .andThen(() => linkRemoteWorktimeRegistry(odooClient, sessionData.uid))
     .andThen(() => retriggerJobRegistryStatusComputation(odooClient, sessionData.uid))
     .andThen(() => uploadPhotos(odooClient))
-    .map(() => logger.info("Subida de registros exitosa"))
+    .map(() => logger.verbose("Subida de registros exitosa"))
     .mapErr((e) => transformError(e, "Error al sincronizar datos"));
 
   const newState = {

@@ -1,6 +1,6 @@
 import migrations from "@/drizzle/migrations";
 import { syncAll } from "@/lib/api/sync";
-import { restoreAndValidateSession } from "@/lib/api/user-session";
+import { restoreSession } from "@/lib/api/user-session";
 import db from "@/lib/db";
 import { countPending } from "@/lib/db/queries/utils";
 import { Logger } from "@/lib/logger";
@@ -10,34 +10,41 @@ import { migrate } from "drizzle-orm/expo-sqlite/migrator";
 import { useFonts } from "expo-font";
 import { addNetworkStateListener, getNetworkStateAsync } from "expo-network";
 import { SplashScreen } from "expo-router";
-import { ResultAsync } from "neverthrow";
 import { useEffect, useState } from "react";
 import { AppState } from "react-native";
-import Toast from "react-native-toast-message";
+import { persist } from "../db/actions/users-session";
 
-const logger = Logger.getLogger("API::INIT");
-const applicationLogger = Logger.getLogger("APP");
+const initLogger = Logger.getLogger("API::INIT");
+const logger = Logger.getLogger("APP");
 
 export async function init() {
-  const migrationResult = await ResultAsync.fromThrowable(
-    async () => migrate(db, migrations),
-    (e) => transformError(e, "Error de migración de base de datos"),
-  )();
-
-  if (migrationResult.isErr()) {
-    globalStore.setState({ lastError: migrationResult.error });
-    return migrationResult.error.message;
+  try {
+    await migrate(db, migrations);
+  } catch (e) {
+    const err = transformError(e, "Error de migración de base de datos");
+    initLogger.error(err);
+    return err.message;
   }
 
-  logger.info("Migraciones de base de datos aplicadas correctamente");
-  logger.info("Iniciando sesión...");
-  await restoreAndValidateSession();
+  initLogger.verbose("Migraciones de base de datos aplicadas correctamente");
+  initLogger.verbose("Iniciando sesión...");
+
+  try {
+    const [session, client] = await restoreSession();
+    if (session) {
+      await persist(session);
+      globalStore.setState({ sessionData: session, odooClient: client });
+    }
+  } catch (e) {
+    logger.error(transformError(e, "Error restaurando o validando la sesión"));
+  }
+
   const userId = globalStore.getState().sessionData?.uid;
 
   globalStore.setState({
     isOnline: await getNetworkStateAsync()
       .then((r) => r.isInternetReachable)
-      .catch((r) => null),
+      .catch(() => null),
     conflicts: 0,
     pendingChanges:
       userId == null ? 0 : await countPending(userId).catch(() => 0),
@@ -58,13 +65,7 @@ export function useInit() {
   useEffect(() => {
     if (fontError) {
       setOk(false);
-      globalStore.setState({
-        lastError: {
-          type: "UnknownError",
-          message: "Error al cargar la fuente",
-          original: fontError,
-        },
-      });
+      initLogger.error(transformError(fontError, "Error al cargar fuentes"));
       return;
     }
 
@@ -75,14 +76,12 @@ export function useInit() {
       .then(SplashScreen.hideAsync)
       .finally(() => setLoading(false));
 
-    const networkSubscription = addNetworkStateListener(async (state) => {
+    const networkSubscription = addNetworkStateListener(async (_) => {
       const isOnline = await getNetworkStateAsync()
         .then((r) => r.isInternetReachable)
-        .catch((r) => null);
+        .catch(() => null);
 
-      globalStore.setState({
-        isOnline,
-      });
+      globalStore.setState({ isOnline });
 
       if (isOnline === true) {
         syncAll(true);
@@ -92,44 +91,13 @@ export function useInit() {
     const memoryWarningEventSubscription = AppState.addEventListener(
       "memoryWarning",
       () => {
-        applicationLogger.warn("Consumo de memoria alta");
+        logger.warn("Consumo de memoria alta");
       },
     );
-
-    const unSubscribeGlobal = globalStore.subscribe((state, previousState) => {
-      if (
-        state.lastError !== previousState.lastError &&
-        state.lastError != null
-      ) {
-        applicationLogger.error(state.lastError.message, state.lastError);
-        if (
-          state.lastError.type !== "SessionExpired" &&
-          state.lastError.type !== "InvalidCredentials"
-        ) {
-          Toast.show({
-            type: "error",
-            text1: "Error",
-            text2: state.lastError.message,
-            swipeable: true,
-            autoHide: true,
-          });
-        }
-      }
-
-      if (state.lastMsg !== previousState.lastMsg && state.lastMsg != null) {
-        Toast.show({
-          type: "success",
-          text1: state.lastMsg,
-          swipeable: true,
-          autoHide: true,
-        });
-      }
-    });
 
     return () => {
       networkSubscription.remove();
       memoryWarningEventSubscription.remove();
-      unSubscribeGlobal();
     };
   }, [fontError]);
 

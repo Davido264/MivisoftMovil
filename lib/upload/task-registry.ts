@@ -19,7 +19,7 @@ import { transformError, wrapMultiErrors } from "@/lib/result";
 const logger = Logger.getLogger("UPLOAD::TASK-REGISTRY");
 
 export function uploadTaskRegistries(client: OdooJSONRpc, userId: number) {
-  logger.info("Subiendo registros pendientes");
+  logger.verbose("Subiendo registros pendientes");
   return ResultAsync.fromPromise(getAllPendingTaskRegistries(userId, db), (e) =>
     transformError(e, "Error al obtener registros pendientes"),
   )
@@ -28,7 +28,7 @@ export function uploadTaskRegistries(client: OdooJSONRpc, userId: number) {
         tasks.map((t) => uploadTaskRegistry(t, client)),
       ),
     )
-    .map(() => logger.info("Subida exitosa"))
+    .map(() => logger.verbose("Subida exitosa"))
     .mapErr((e) => wrapMultiErrors(e, "Error al subir registros"));
 }
 

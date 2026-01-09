@@ -27,7 +27,7 @@ const logger = Logger.getLogger("SYNC::RESOURCES");
 export function applyRemoteVehicleChange(vehicles: RemoteVehicle[]) {
   const r = db.transaction(
     async (tx) => {
-      logger.info("Actualizando vechículos");
+      logger.verbose("Actualizando vechículos");
       await upsertVehicles(vehicles, tx);
       await deleteNonRemoteVehicles(
         vehicles.map((i) => i.id!),
@@ -45,7 +45,7 @@ export function applyRemoteVehicleChange(vehicles: RemoteVehicle[]) {
 export function applyRemoteCompanyChange(companies: RemoteCompany[]) {
   const r = db.transaction(
     async (tx) => {
-      logger.info("Actualizando companías");
+      logger.verbose("Actualizando companías");
       await upsertCompanies(companies, tx);
       await deleteNonRemoteCompanies(
         companies.map((i) => i.id!),
@@ -63,7 +63,7 @@ export function applyRemoteCompanyChange(companies: RemoteCompany[]) {
 export function applyRemoteUsersChange(users: RemoteUser[]) {
   const currentUserId = db.transaction(
     async (tx) => {
-      logger.info("Actualizando usuarios");
+      logger.verbose("Actualizando usuarios");
       await upsertRemoteUsers(users, tx);
       return await deleteNonRemoteUsers(
         users.map((i) => i.id!),
@@ -90,7 +90,7 @@ export function applyRemoteItineraryChange(
 ) {
   const r = db.transaction(
     async (tx) => {
-      logger.info("Actualizando Itinerarios");
+      logger.verbose("Actualizando Itinerarios");
       await upsertItineraries(itineraries, tx);
       await deleteNonRemoteItineraries(
         itineraries.map((it) => it.id!),

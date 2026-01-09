@@ -23,7 +23,7 @@ export function uploadActivityRegistries(
   client: OdooJSONRpc,
   userId: number,
 ) {
-  logger.info("Subiendo registros pendientes");
+  logger.verbose("Subiendo registros pendientes");
 
   return ResultAsync.fromPromise(
     getAllPendingActivityRegistries(userId, db),
@@ -34,7 +34,7 @@ export function uploadActivityRegistries(
         acts.map((act) => uploadActivityRegistry(act, client)),
       ),
     )
-    .map(() => logger.info("Subida exitosa"))
+    .map(() => logger.verbose("Subida exitosa"))
     .mapErr((e) => wrapMultiErrors(e, "Error al subir registros"));
 }
 
