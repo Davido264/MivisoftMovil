@@ -53,7 +53,7 @@ export function getAllPendingWorktimeRegistries(
     .select()
     .from(worktimeRegistries_table)
     .where(
-      sql`${worktimeRegistries_table.lastsync} IS NULL OR ${worktimeRegistries_table.lastmod} > ${worktimeRegistries_table.lastsync}`,
+      sql`${worktimeRegistries_table.lastmod} > ${worktimeRegistries_table.lastsync} OR ${worktimeRegistries_table.lastsync} IS NULL`,
     )
     .orderBy(sql`${worktimeRegistries_table.startDate} ASC`);
 }
@@ -66,6 +66,6 @@ export function getAllPendingJobRegistrysOdooIdForUser(
     .select()
     .from(worktime_job_registry_table)
     .where(
-      sql`${worktime_job_registry_table.userId} = ${userId} AND ${worktime_job_registry_table.odooJobRegistryId} IS NOT NULL AND ${worktime_job_registry_table.dirty} = ${true}`,
+      sql`${worktime_job_registry_table.odooJobRegistryId} IS NOT NULL AND ${worktime_job_registry_table.dirty} = ${true}`,
     );
 }

@@ -1,38 +1,24 @@
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
-import { RemoteActivityRegistry } from "@/lib/odoo/act-registry";
+import {
+  Env,
+  RemoteActivityRegistry,
+  RemoteTaskRegistry,
+  RemoteTask,
+} from "@/lib/odoo/env";
+import { Environment } from "./_env";
 import { parseOdoo } from "@/lib/date";
 import { Logger } from "@/lib/logger";
 import { transformError } from "@/lib/result";
 
+export { RemoteTaskRegistry, RemoteTask } from "./env";
+
 const logger = Logger.getLogger("");
 
-export type RemoteTaskRegistry = {
-  id: number | undefined;
-  completed: boolean;
-  completed_date: string | false;
-  observation: string;
-  task_id: number;
-  activity_registry_id: number;
-  uid: number;
-  lastmod: Date;
-};
-
-export type RemoteTask = {
-  id: number | undefined;
-  activity_id: number;
-  name: string;
-};
-
-const odooModelRegistry = "technical_support.task_registry";
-const odooModelResource = "technical_support.task";
-
 export async function fetchTaskRegistries(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   actRegistries: RemoteActivityRegistry[],
 ) {
   try {
-    const registries = await client.searchRead(
-      odooModelRegistry,
+    const registries = await env["technical_support.task_registry"].searchRead(
       [["activity_registry_id", "in", actRegistries.map((i) => i.id!)]],
       [
         "id",
@@ -69,10 +55,9 @@ export async function fetchTaskRegistries(
   }
 }
 
-export async function fetchTasks(client: OdooJSONRpc, activityIds: number[]) {
+export async function fetchTasks(env: Environment<Env>, activityIds: number[]) {
   try {
-    const tasks = await client.searchRead(
-      odooModelResource,
+    const tasks = await env["technical_support.task"].searchRead(
       [["activity_id", "in", activityIds]],
       ["activity_id", "id", "name"],
     );
@@ -90,12 +75,12 @@ export async function fetchTasks(client: OdooJSONRpc, activityIds: number[]) {
 }
 
 export async function writeTaskRegistry(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   id: number,
-  record: RemoteTaskRegistry,
+  record: Partial<Omit<RemoteTaskRegistry, "id">>,
 ) {
   try {
-    await client.update(odooModelRegistry, id, record);
+    await env["technical_support.task_registry"].update(id, record);
     return id;
   } catch (error) {
     throw transformError(error, "Error al actualizar registro de tarea", {
@@ -105,11 +90,11 @@ export async function writeTaskRegistry(
 }
 
 export async function createTaskRegistry(
-  client: OdooJSONRpc,
-  record: RemoteTaskRegistry,
+  env: Environment<Env>,
+  record: Partial<Omit<RemoteTaskRegistry, "id">>,
 ) {
   try {
-    const existing = await client.search(odooModelRegistry, [
+    const existing = await env["technical_support.task_registry"].search([
       "&",
       ["activity_registry_id", "=", record.activity_registry_id],
       ["task_id", "=", record.task_id],
@@ -119,14 +104,35 @@ export async function createTaskRegistry(
       logger.warn(
         "No se ha encontrado una tarea o se encontraron varias, creando",
       );
-      return await client.create(odooModelRegistry, record);
+      return await env["technical_support.task_registry"].create(record);
     }
 
-    await client.update(odooModelRegistry, existing[0], record);
+    await env["technical_support.task_registry"].update(existing[0], record);
     return existing[0];
   } catch (error) {
     throw transformError(error, "Error al actualizar registro de tarea", {
       record,
+    });
+  }
+}
+
+export async function getTaskRegistryOdooIds(
+  env: Environment<Env>,
+  userId: number,
+  uuid: string[],
+) {
+  try {
+    const map = await env["technical_support.task_registry"].searchRead(
+      [
+        ["uuid", "in", uuid],
+        ["uid", "=", userId],
+      ],
+      ["id", "uuid"],
+    );
+    return new Map(map.map((r) => [r.uuid, r.id])) as Map<string, number>;
+  } catch (error) {
+    throw transformError(error, "Error al obtener id remoto", {
+      function: "getTaskRegistryOdooIds",
     });
   }
 }

@@ -14,98 +14,111 @@ import {
   bulkUploadWorktimeRegistries,
   linkJobRegistryToWorktimeRegistry,
 } from "@/lib/odoo/worktime-registry";
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import {
   WorktimeJobRegistrySelect,
   WorktimeRegistrySelect,
 } from "@/lib/db/schema/worktime-registry";
-import { ResultAsync } from "neverthrow";
-import { transformError, wrapMultiErrors } from "@/lib/result";
+import { transformError } from "@/lib/result";
+import { Env } from "../odoo/env";
+import { Environment } from "../odoo/_env";
 
 const logger = Logger.getLogger("UPLOAD::WORKTIME-REGISTRY");
 
-export function uploadWorktimeRegistry(client: OdooJSONRpc, userId: number) {
-  logger.verbose("Subiendo registros pendientes");
-
-  return ResultAsync.fromPromise(
-    getAllPendingWorktimeRegistries(userId, db),
-    (e) => transformError(e, "Error al obtener registros pendientes"),
-  )
-    .map(worktimeRegistryGroupedByDay)
-    .andThen((grouped) =>
-      ResultAsync.combineWithAllErrors(
-        Object.values(grouped).map((worktimes) => upload(worktimes, client)),
-      ),
-    )
-    .map(() => logger.verbose("Subidas exitosas"))
-    .mapErr((e) => wrapMultiErrors(e, "Error subiendo registros"));
-}
-
-export function linkRemoteWorktimeRegistry(
-  client: OdooJSONRpc,
+export async function uploadWorktimeRegistry(
+  env: Environment<Env>,
   userId: number,
 ) {
-  logger.verbose("Vinculando registros pendientes");
+  const pop = Logger.startSubStackTrace("upload::uploadWorktimeRegistry");
+  logger.verbose("Subiendo registros pendientes");
 
-  return ResultAsync.fromPromise(
-    getAllPendingJobRegistrysOdooIdForUser(userId, db),
-    (e) => transformError(e, "Error al obtener registros de trabajos"),
-  )
-    .map((r) => relationsGroupedByDay(r))
-    .andThrough((grouped) =>
-      ResultAsync.combineWithAllErrors(
-        Object.entries(grouped).map(([day, rels]) =>
-          linkJobRegistryToWorktimeRegistry(
-            client,
-            userId,
-            parseInt(day),
-            rels.map((r) => r.odooJobRegistryId!),
-          ),
-        ),
-      ),
-    )
-    .andThen((grouped) =>
-      ResultAsync.combineWithAllErrors(
-        Object.entries(grouped).map(([day, rels]) =>
-          ResultAsync.fromPromise(
-            markWorktimeRegistryJobRegistryClean(
-              rels.map((r) => r.jobRegistryId),
-              parseInt(day),
-            ),
-            (e) =>
-              transformError(e, "Error al marcar relaciones como actualizadas"),
-          ),
-        ),
-      ),
-    )
-    .map(() => logger.verbose("Subidas exitosas"))
-    .mapErr((e) => wrapMultiErrors(e, "Error subiendo registros"));
+  try {
+    const worktimes = await getAllPendingWorktimeRegistries(userId, db);
+    const grouped = worktimeRegistryGroupedByDay(worktimes);
+
+    for (const worktimes of Object.values(grouped)) {
+      await upload(worktimes, env);
+    }
+
+    logger.verbose("Subidas exitosas");
+  } catch (e) {
+    throw transformError(e, "Error subiendo registros", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
-function upload(worktimes: WorktimeRegistrySelect[], client: OdooJSONRpc) {
-  worktimes.sort(comparator);
+export async function linkRemoteWorktimeRegistry(
+  env: Environment<Env>,
+  userId: number,
+) {
+  const pop = Logger.startSubStackTrace("upload::linkRemoteWorktimeRegistry");
+  logger.verbose("Vinculando registros pendientes");
 
-  return bulkUploadWorktimeRegistries(
-    client,
-    worktimes.map(remotifyWorktimeRegistry),
-  ).andThen((odooId) =>
-    ResultAsync.fromPromise(
-      db.transaction(
-        async (tx) => {
-          for (const register of worktimes) {
-            await setServerIdForWorktimeRegistryImage(
-              register.id,
-              `${odooId}`,
-              tx,
-            );
-            await updateWorktimeRegistry(register.id, {}, true, tx);
-          }
-        },
-        { behavior: transBehavior },
-      ),
-      (e) => transformError(e, "Error al subir registros de jornadas"),
-    ),
-  );
+  try {
+    const relations = await getAllPendingJobRegistrysOdooIdForUser(userId, db);
+    const grouped = relationsGroupedByDay(relations);
+
+    for (const [day, rels] of Object.entries(grouped)) {
+      await linkJobRegistryToWorktimeRegistry(
+        env,
+        userId,
+        parseInt(day),
+        rels.map((r) => r.odooJobRegistryId!),
+      );
+    }
+
+    for (const [day, rels] of Object.entries(grouped)) {
+      await markWorktimeRegistryJobRegistryClean(
+        rels.map((r) => r.jobRegistryId),
+        parseInt(day),
+      );
+    }
+
+    logger.verbose("Subidas exitosas");
+  } catch (e) {
+    throw transformError(e, "Error subiendo registros", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
+}
+
+async function upload(
+  worktimes: WorktimeRegistrySelect[],
+  env: Environment<Env>,
+) {
+  const pop = Logger.startSubStackTrace("upload::worktime");
+  try {
+    worktimes.sort(comparator);
+
+    const odooId = await bulkUploadWorktimeRegistries(
+      env,
+      worktimes.map(remotifyWorktimeRegistry),
+    );
+
+    await db.transaction(
+      async (tx) => {
+        for (const register of worktimes) {
+          await setServerIdForWorktimeRegistryImage(
+            register.id,
+            `${odooId}`,
+            tx,
+          );
+          await updateWorktimeRegistry(register.id, {}, true, tx);
+        }
+      },
+      { behavior: transBehavior },
+    );
+  } catch (e) {
+    throw transformError(e, "Error al subir registros de jornadas", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
 function worktimeRegistryGroupedByDay(worktimes: WorktimeRegistrySelect[]) {

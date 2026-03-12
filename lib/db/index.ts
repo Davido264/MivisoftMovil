@@ -7,6 +7,7 @@ import * as $4 from "@/lib/db/schema/job-registry";
 import * as $5 from "@/lib/db/schema/activity-registry";
 import * as $6 from "@/lib/db/schema/task-registry";
 import * as $7 from "@/lib/db/schema/photos";
+import { Logger } from "../logger";
 
 const schema = { ...$1, ...$2, ...$3, ...$4, ...$5, ...$6, ...$7 };
 
@@ -20,9 +21,7 @@ const transBehavior = "deferred";
 
 _expoAppConnection.runSync("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;");
 
-const db = drizzle(_expoAppConnection, { schema });
-
-console.log(db.$client === _expoAppConnection)
+const db = drizzle(_expoAppConnection, { schema, logger: Logger.getSQLLogger("DB") });
 
 export type Database =
   | typeof db

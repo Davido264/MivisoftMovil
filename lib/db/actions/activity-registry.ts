@@ -5,7 +5,7 @@ import {
   ActivityRegistryInsert,
   ActivityRegistrySelect,
 } from "@/lib/db/schema/activity-registry";
-import { updateJobRegistryPriority } from "@/lib/db/actions/job-registry";
+import { updateJobRegistry } from "@/lib/db/actions/job-registry";
 import { RemoteActivityRegistry } from "@/lib/odoo/act-registry";
 import { dateObj } from "@/lib/db/actions/utils";
 
@@ -24,6 +24,7 @@ export function upsertActivityRegistry(
           activityRegistries_table.activityId,
         ],
         set: {
+          odooId: sql`excluded.odooId`,
           observation: sql`excluded.observation`,
           lat: sql`excluded.lat`,
           lng: sql`excluded.lng`,
@@ -34,14 +35,14 @@ export function upsertActivityRegistry(
       .then((r) => r[0].id);
 
     if (insert.jobRegistryId) {
-      await updateJobRegistryPriority(insert.jobRegistryId, tx);
+      await updateJobRegistry(insert.jobRegistryId, {}, false, true, tx);
     }
     return returningId;
   });
 }
 
 export function updateActivityRegistry(
-  activityregistryid: number,
+  activityregistryId: number,
   update: Partial<ActivityRegistryInsert>,
   sync: boolean = false,
   scope: Database = db,
@@ -50,36 +51,31 @@ export function updateActivityRegistry(
     const returningId = await tx
       .update(activityRegistries_table)
       .set({ ...update, ...dateObj(sync) })
-      .where(sql`${activityRegistries_table.id} = ${activityregistryid}`)
+      .where(sql`${activityRegistries_table.id} = ${activityregistryId}`)
       .returning({ id: activityRegistries_table.id })
       .then((r) => r[0].id);
 
-    if (update.jobRegistryId) {
-      await updateJobRegistryPriority(update.jobRegistryId, tx);
+    const jobRegistryId = await tx
+      .select({ id: activityRegistries_table.jobRegistryId })
+      .from(activityRegistries_table)
+      .where(sql`${activityRegistries_table.id} = ${activityregistryId}`)
+      .then((e) => (e.length == 0 ? null : e[0].id));
+
+    if (jobRegistryId != null) {
+      await updateJobRegistry(jobRegistryId, {}, false, true, tx);
     }
     return returningId;
   });
-}
-
-export async function updateActivityRegistryPriority(
-  activityRegistryId: number,
-  scope: Database = db,
-) {
-  const jobRegistryId = await scope
-    .select({ jobRegistryId: activityRegistries_table.jobRegistryId })
-    .from(activityRegistries_table)
-    .where(sql`${activityRegistries_table.id} = ${activityRegistryId}`)
-    .then((r) => (r.length > 0 ? r[0].jobRegistryId : undefined));
-
-  if (jobRegistryId !== undefined) {
-    await updateJobRegistryPriority(jobRegistryId!, scope);
-  }
 }
 
 export function purgeDeletedActivityRegistries(
   activityIds: number[],
   scope: Database = db,
 ) {
+  if (activityIds.length === 0) {
+    return;
+  }
+
   return scope
     .delete(activityRegistries_table)
     .where(
@@ -87,11 +83,36 @@ export function purgeDeletedActivityRegistries(
     );
 }
 
+export async function updateActivityRegistryLastSync(
+  activityRegistryIds: number[],
+  scope: Database = db,
+) {
+  if (activityRegistryIds.length === 0) {
+    return;
+  }
+
+  await scope
+    .update(activityRegistries_table)
+    .set({ lastsync: new Date() })
+    .where(sql`${activityRegistries_table.id} IN ${activityRegistryIds}`);
+}
+
 export function remotifyActivityRegistry(activity: ActivityRegistrySelect) {
   return {
     id: activity.odooId,
     job_registry_id: activity.jobRegistryId,
     activity_id: activity.activityId,
+    lat: activity.lat,
+    lng: activity.lng,
+    observation: activity.observation,
+  } as RemoteActivityRegistry;
+}
+
+export function prepareActivityRegistryUpdatePayload(
+  activity: ActivityRegistrySelect,
+) {
+  return {
+    id: activity.odooId,
     lat: activity.lat,
     lng: activity.lng,
     observation: activity.observation,

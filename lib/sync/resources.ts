@@ -19,87 +19,104 @@ import {
   upsertVehicles,
 } from "@/lib/db/actions/resources";
 import { Logger } from "@/lib/logger";
-import { ok, ResultAsync } from "neverthrow";
 import { transformError } from "../result";
 
 const logger = Logger.getLogger("SYNC::RESOURCES");
 
-export function applyRemoteVehicleChange(vehicles: RemoteVehicle[]) {
-  const r = db.transaction(
-    async (tx) => {
-      logger.verbose("Actualizando vechículos");
-      await upsertVehicles(vehicles, tx);
-      await deleteNonRemoteVehicles(
-        vehicles.map((i) => i.id!),
-        tx,
-      );
-    },
-    { behavior: transBehavior },
-  );
-
-  return ResultAsync.fromPromise(r, (e) =>
-    transformError(e, "Error al actualizar vecículos"),
-  );
+export async function applyRemoteVehicleChange(vehicles: RemoteVehicle[]) {
+  const pop = Logger.startSubStackTrace("resources::applyRemoteVehicleChange");
+  try {
+    await db.transaction(
+      async (tx) => {
+        logger.verbose("Actualizando vechículos");
+        await upsertVehicles(vehicles, tx);
+        await deleteNonRemoteVehicles(
+          vehicles.map((i) => i.id!),
+          tx,
+        );
+      },
+      { behavior: transBehavior },
+    );
+  } catch (e) {
+    throw transformError(e, "Error al actualizar vecículos", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
-export function applyRemoteCompanyChange(companies: RemoteCompany[]) {
-  const r = db.transaction(
-    async (tx) => {
-      logger.verbose("Actualizando companías");
-      await upsertCompanies(companies, tx);
-      await deleteNonRemoteCompanies(
-        companies.map((i) => i.id!),
-        tx,
-      );
-    },
-    { behavior: transBehavior },
-  );
-
-  return ResultAsync.fromPromise(r, (e) =>
-    transformError(e, "Error al actualizar companías"),
-  );
+export async function applyRemoteCompanyChange(companies: RemoteCompany[]) {
+  const pop = Logger.startSubStackTrace("resources::applyRemoteCompanyChange");
+  try {
+    await db.transaction(
+      async (tx) => {
+        logger.verbose("Actualizando companías");
+        await upsertCompanies(companies, tx);
+        await deleteNonRemoteCompanies(
+          companies.map((i) => i.id!),
+          tx,
+        );
+      },
+      { behavior: transBehavior },
+    );
+  } catch (e) {
+    throw transformError(e, "Error al actualizar companías", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
-export function applyRemoteUsersChange(users: RemoteUser[]) {
-  const currentUserId = db.transaction(
-    async (tx) => {
-      logger.verbose("Actualizando usuarios");
-      await upsertRemoteUsers(users, tx);
-      return await deleteNonRemoteUsers(
-        users.map((i) => i.id!),
-        tx,
-      );
-    },
-    { behavior: transBehavior },
-  );
+export async function applyRemoteUsersChange(users: RemoteUser[]) {
+  const pop = Logger.startSubStackTrace("resources::applyRemoteUsersChange");
+  try {
+    const currentUserId = await db.transaction(
+      async (tx) => {
+        logger.verbose("Actualizando usuarios");
+        await upsertRemoteUsers(users, tx);
+        return await deleteNonRemoteUsers(
+          users.map((i) => i.id!),
+          tx,
+        );
+      },
+      { behavior: transBehavior },
+    );
 
-  return ResultAsync.fromPromise(currentUserId, (e) =>
-    transformError(e, "Error al actualizar los usuarios actuales"),
-  ).andThen((c) => {
-    if (c !== undefined) {
-      return ResultAsync.fromPromise(removeUserSession(c), (e) =>
-        transformError(e, "Error al eliminar la sesión del usuario"),
-      );
+    if (currentUserId !== undefined) {
+      return await removeUserSession(currentUserId);
     }
-    return ok();
-  });
+  } catch (e) {
+    throw transformError(e, "Error al actualizar los usuarios actuales", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
-export function applyRemoteItineraryChange(
+export async function applyRemoteItineraryChange(
   itineraries: RemoteItinerary[],
 ) {
-  const r = db.transaction(
-    async (tx) => {
-      logger.verbose("Actualizando Itinerarios");
-      await upsertItineraries(itineraries, tx);
-      await deleteNonRemoteItineraries(
-        itineraries.map((it) => it.id!),
-        tx,
-      );
-    },
-    { behavior: transBehavior },
-  );
-  return ResultAsync.fromPromise(r, (e) =>
-    transformError(e, "Error al actualizar itinerarios"),
-  );
+  const pop = Logger.startSubStackTrace("resources::applyRemoteItineraryChange");
+  try {
+    await db.transaction(
+      async (tx) => {
+        logger.verbose("Actualizando Itinerarios");
+        await upsertItineraries(itineraries, tx);
+        await deleteNonRemoteItineraries(
+          itineraries.map((it) => it.id!),
+          tx,
+        );
+      },
+      { behavior: transBehavior },
+    );
+  } catch (e) {
+    throw transformError(e, "Error al actualizar itinerarios", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }

@@ -11,8 +11,8 @@ import { remotifyActivityRegistry } from "@/lib/db/actions/activity-registry";
 import { remotifyJobRegistry } from "@/lib/db/actions/job-registry";
 import { remotifyTaskRegistry } from "@/lib/db/actions/task-registry";
 import { remotifyWorktimeRegistry } from "@/lib/db/actions/worktime-registry";
-import { getAllPendingActivityRegistries } from "@/lib/db/queries/activity-registries";
-import { getAllPendingJobRegistries } from "@/lib/db/queries/job-registry";
+import { getAllNewActivityRegistries } from "@/lib/db/queries/activity-registries";
+import { getPendingJobRegistryCreations } from "@/lib/db/queries/job-registry";
 import { getAllPendingTaskRegistries } from "@/lib/db/queries/task-registries";
 import { getAllPendingWorktimeRegistries } from "@/lib/db/queries/worktime-registry";
 import { ActivityRegistrySelect } from "@/lib/db/schema/activity-registry";
@@ -37,13 +37,13 @@ export default function Backlog() {
     data: jobRegs,
     updatedAt: uJobReg,
     error: eJobReg,
-  } = useLiveQuery(getAllPendingJobRegistries(userId));
+  } = useLiveQuery(getPendingJobRegistryCreations(userId));
 
   const {
     data: actRegs,
     updatedAt: uActReg,
     error: eActReg,
-  } = useLiveQuery(getAllPendingActivityRegistries(userId));
+  } = useLiveQuery(getAllNewActivityRegistries(userId));
 
   const {
     data: taskRegs,

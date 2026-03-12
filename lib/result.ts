@@ -86,16 +86,31 @@ export function transformError(
     );
   }
 
-  if (isNetworkError(errorMessage)) {
-    return new ApplicationError("NetworkError", message, context, e);
+  if (isNetworkError(e)) {
+    return new ApplicationError(
+      "NetworkError",
+      message ?? errorMessage,
+      context,
+      e,
+    );
   }
 
   if (isSessionExpired(errorMessage)) {
-    return new ApplicationError("SessionExpired", message, context, e);
+    return new ApplicationError(
+      "SessionExpired",
+      message ?? errorMessage,
+      context,
+      e,
+    );
   }
 
   if (isInvalidCredentials(errorMessage)) {
-    return new ApplicationError("InvalidCredentials", message, context, e);
+    return new ApplicationError(
+      "InvalidCredentials",
+      message ?? errorMessage,
+      context,
+      e,
+    );
   }
 
   if (
@@ -105,7 +120,7 @@ export function transformError(
     if ("name" in e && e.name === "DrizzleError") {
       return new ApplicationError(
         "LocalDatabaseInternalError",
-        message,
+        message ?? errorMessage,
         context,
         e,
       );
@@ -113,20 +128,24 @@ export function transformError(
 
     return new ApplicationError(
       "LocalDatabaseInternalError",
-      message,
+      message ?? errorMessage,
       context,
       e,
     );
   }
 
-  return new ApplicationError("UnknownError", message, context, e);
+  return new ApplicationError("UnknownError", message ?? errorMessage, context, e);
 }
 
-function isNetworkError(errormsg: string) {
-  return errormsg === "Network request failed";
+export function isNetworkError(error: Error | any) {
+  const errormsg = error instanceof Error ? error.message : String(error);
+  return (
+    (error instanceof Error && error.name === "NetworkError") ||
+    errormsg === "Network request failed"
+  );
 }
 
-function isSessionExpired(errormsg: string) {
+export function isSessionExpired(errormsg: string) {
   return (
     errormsg === "Authentication failed. Please check your credentials." ||
     errormsg === "Session Expired" ||

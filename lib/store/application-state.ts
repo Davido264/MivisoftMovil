@@ -1,4 +1,3 @@
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { OdooSession } from "@/lib/db/schema/user-session";
 import { ApplicationError } from "@/lib/result";
 import { createStore, useStore } from "zustand";
@@ -11,7 +10,6 @@ export type ApplicationState = {
   pendingChanges: number;
 
   sessionData: OdooSession | null;
-  odooClient: OdooJSONRpc | null;
 
   lastError: ApplicationError | null;
   lastMsg: string | null;
@@ -24,7 +22,6 @@ export const globalStore = createStore<ApplicationState>()(() => ({
   pendingChanges: 0,
 
   sessionData: null,
-  odooClient: null,
 
   lastError: null,
   lastMsg: null,

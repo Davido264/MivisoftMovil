@@ -1,12 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import db, { Database } from "@/lib/db";
-import { OdooSession, users_table } from "@/lib/db/schema/user-session";
+import {
+  OdooSession,
+  users_table,
+  asyncStorageKey,
+} from "@/lib/db/schema/user-session";
 import { sql } from "drizzle-orm";
 import { Logger } from "@/lib/logger";
 import { getCurrentUserId } from "@/lib/db/queries/users-session";
-import { RemoteUser } from "@/lib/odoo/users";
-
-const asyncStorageKey = "technical_support::current_session";
+import { RemoteUser } from "@/lib/odoo/env";
 
 const logger = Logger.getLogger("STORAGE::USERS-SESSION");
 
@@ -58,6 +60,10 @@ export async function persist(session: OdooSession, scope: Database = db) {
 }
 
 export async function upsertRemoteUsers(u: RemoteUser[], scope: Database = db) {
+  if (u.length == 0) {
+    return;
+  }
+
   return scope
     .insert(users_table)
     .values(u.map(({ id, name, tz, company }) => ({ id, name, tz, company })))
@@ -75,6 +81,10 @@ export async function deleteNonRemoteUsers(
   existingUserIds: number[],
   scope: Database = db,
 ) {
+  if (existingUserIds.length === 0) {
+    return;
+  }
+
   const currentUserId = await getCurrentUserId();
   if (currentUserId != null && !existingUserIds.includes(currentUserId)) {
     logger.warn("Se va a elminar la sesión del usuario actual");

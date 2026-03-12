@@ -22,6 +22,10 @@ export async function upsertActivities(
   acts: RemoteActivity[],
   scope: Database = db,
 ) {
+  if (acts.length == 0) {
+    return;
+  }
+
   return scope
     .insert(activities_table)
     .values(
@@ -44,20 +48,31 @@ export async function deleteNonRemobeActivities(
   ids: number[],
   scope: Database = db,
 ) {
+  if (ids.length === 0) {
+    return;
+  }
+
   return scope
     .delete(activities_table)
     .where(sql`${activities_table.id} NOT IN ${ids}`);
 }
 
 export async function upsertVehicles(v: RemoteVehicle[], scope: Database = db) {
+  if (v.length == 0) {
+    return;
+  }
+
   return scope.transaction(async (tx) => {
     await tx
       .insert(vehicles_table)
       .values(
-        v.map((i) => ({
-          id: i.id,
-          name: i.name,
-        } as VehicleInsert)),
+        v.map(
+          (i) =>
+            ({
+              id: i.id,
+              name: i.name,
+            }) as VehicleInsert,
+        ),
       )
       .onConflictDoUpdate({
         target: vehicles_table.id,
@@ -76,7 +91,10 @@ export async function upsertVehicles(v: RemoteVehicle[], scope: Database = db) {
       .insert(vehicles_companies_table)
       .values(entries)
       .onConflictDoUpdate({
-        target: [vehicles_companies_table.companyId, vehicles_companies_table.vehicleId],
+        target: [
+          vehicles_companies_table.companyId,
+          vehicles_companies_table.vehicleId,
+        ],
         set: {
           companyId: sql`excluded.companyId`,
           vehicleId: sql`excluded.vehicleId`,
@@ -89,6 +107,10 @@ export async function deleteNonRemoteVehicles(
   ids: number[],
   scope: Database = db,
 ) {
+  if (ids.length === 0) {
+    return;
+  }
+
   return scope
     .delete(vehicles_table)
     .where(sql`${vehicles_table.id} NOT IN ${ids}`);
@@ -98,6 +120,10 @@ export async function upsertCompanies(
   c: RemoteCompany[],
   scope: Database = db,
 ) {
+  if (c.length == 0) {
+    return;
+  }
+
   return scope
     .insert(companies_table)
     .values(c)
@@ -111,6 +137,10 @@ export async function deleteNonRemoteCompanies(
   ids: number[],
   scope: Database = db,
 ) {
+  if (ids.length === 0) {
+    return;
+  }
+
   return scope
     .delete(companies_table)
     .where(sql`${companies_table.id} NOT IN ${ids}`);
@@ -120,6 +150,10 @@ export async function upsertItineraries(
   remoteItineraries: RemoteItinerary[],
   scope: Database = db,
 ) {
+  if (remoteItineraries.length == 0) {
+    return;
+  }
+
   return scope
     .insert(itineraries_table)
     .values(remoteItineraries)
@@ -133,12 +167,20 @@ export async function deleteNonRemoteItineraries(
   ids: number[],
   scope: Database = db,
 ) {
+  if (ids.length === 0) {
+    return;
+  }
+
   return scope
     .delete(itineraries_table)
     .where(sql`${itineraries_table.id} NOT IN ${ids}`);
 }
 
 export async function upsertRemoteTasks(t: RemoteTask[], scope: Database = db) {
+  if (t.length == 0) {
+    return;
+  }
+
   return scope
     .insert(tasks_table)
     .values(
@@ -161,5 +203,9 @@ export async function deleteNonRemoteTasks(
   ids: number[],
   scope: Database = db,
 ) {
+  if (ids.length === 0) {
+    return;
+  }
+
   return scope.delete(tasks_table).where(sql`${tasks_table.id} NOT IN ${ids}`);
 }

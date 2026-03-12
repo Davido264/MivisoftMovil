@@ -1,35 +1,23 @@
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
-import { RemoteJobReg } from "./job-registry";
 import { parseOdoo } from "../date";
 import { transformError } from "../result";
+import {
+  Env,
+  RemoteActivityRegistry,
+  RemoteActivity,
+  RemoteJobReg,
+} from "./env";
+import { Environment } from "./_env";
 
-export type RemoteActivityRegistry = {
-  id: number | undefined;
-  job_registry_id: number;
-  activity_id: number;
-  lat: number;
-  lng: number;
-  observation: string;
-  uid: number;
-  lastmod: Date;
-};
-
-export type RemoteActivity = {
-  id: number | undefined;
-  itinerary_id: number;
-  name: string;
-};
-
-const odooModelRegistry = "technical_support.activity_registry";
-const odooModelResource = "technical_support.activity";
+export { RemoteActivityRegistry, RemoteActivity } from "./env";
 
 export async function fetchActivityRegistries(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   jobregs: RemoteJobReg[],
 ) {
   try {
-    const registries = await client.searchRead(
-      odooModelRegistry,
+    const registries = await env[
+      "technical_support.activity_registry"
+    ].searchRead(
       [["job_registry_id", "in", jobregs.map((i) => i.id!)]],
       [
         "id",
@@ -67,12 +55,11 @@ export async function fetchActivityRegistries(
 }
 
 export async function fetchActivities(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   itineraryIds: number[],
 ) {
   try {
-    const activities = await client.searchRead(
-      odooModelResource,
+    const activities = await env["technical_support.activity"].searchRead(
       [["itinerary_id", "in", itineraryIds]],
       ["id", "itinerary_id", "name"],
     );
@@ -88,12 +75,12 @@ export async function fetchActivities(
 }
 
 export async function writeActivityRegistry(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   id: number,
   record: RemoteActivityRegistry,
 ) {
   try {
-    await client.update(odooModelRegistry, id, record);
+    await env["technical_support.activity_registry"].update(id, record);
     return id;
   } catch (error) {
     throw transformError(error, "Error al actualizar registro de actividad", {
@@ -103,14 +90,35 @@ export async function writeActivityRegistry(
 }
 
 export async function createActivityRegistry(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   record: RemoteActivityRegistry,
 ) {
   try {
-    return await client.create(odooModelRegistry, record);
+    return await env["technical_support.activity_registry"].create(record);
   } catch (error) {
     throw transformError(error, "Error al crear registro de actividad", {
       record,
+    });
+  }
+}
+
+export async function getActivityRegistryOdooIds(
+  env: Environment<Env>,
+  userId: number,
+  uuid: string[],
+) {
+  try {
+    const map = await env["technical_support.activity_registry"].searchRead(
+      [
+        ["uuid", "in", uuid],
+        ["uid", "=", userId],
+      ],
+      ["id", "uuid"],
+    );
+    return new Map(map.map((r) => [r.uuid, r.id])) as Map<string, number>;
+  } catch (error) {
+    throw transformError(error, "Error al obtener id remoto", {
+      function: "getActivityRegistryOdooIds",
     });
   }
 }

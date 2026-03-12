@@ -61,24 +61,15 @@ export async function addJobRegistryToWorktimeRegistry(
     .onConflictDoNothing();
 }
 
-export async function updateWorktimeRegistryJobRegistryOdooId(
-  jobRegistryId: number,
-  odooId: number,
-  scope: Database = db,
-) {
-  return scope
-    .update(worktime_job_registry_table)
-    .set({ odooJobRegistryId: odooId })
-    .where(
-      sql`${worktime_job_registry_table.jobRegistryId} = ${jobRegistryId}`,
-    );
-}
-
 export async function markWorktimeRegistryJobRegistryClean(
   jobRegistryId: number[],
   day: number,
   scope: Database = db,
 ) {
+  if (jobRegistryId.length === 0) {
+    return;
+  }
+
   return scope
     .update(worktime_job_registry_table)
     .set({ dirty: false })
@@ -101,6 +92,19 @@ export async function deleteAllButLastForUser(
     .delete(worktimeRegistries_table)
     .where(
       sql`${worktimeRegistries_table.userId} = ${userId} AND ${worktimeRegistries_table.id} != ${last}`,
+    );
+}
+
+export async function updateWorktimeRegistryJobRegistryOdooId(
+  jobRegistryId: number,
+  odooId: number,
+  scope: Database = db,
+) {
+  return scope
+    .update(worktime_job_registry_table)
+    .set({ odooJobRegistryId: odooId })
+    .where(
+      sql`${worktime_job_registry_table.jobRegistryId} = ${jobRegistryId}`,
     );
 }
 

@@ -105,5 +105,5 @@ export function getAllVehicles(companyId: number, scope: Database = db) {
         WHERE ${vehicles_companies_table.companyId} = ${companyId}
       )`;
 
-  return db.select().from(vehicles_table).where(condition);
+  return scope.select().from(vehicles_table).where(condition);
 }

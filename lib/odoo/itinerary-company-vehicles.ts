@@ -1,69 +1,30 @@
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { transformError } from "@/lib/result";
+import { Env, RemoteVehicle, RemoteCompany, RemoteItinerary } from "./env";
+import { Environment } from "./_env";
 
-export type RemoteItinerary = {
-  id: number | undefined;
-  name: string;
-};
+export { RemoteVehicle, RemoteCompany, RemoteItinerary } from "./env";
 
-export type RemoteVehicle = {
-  id: number | undefined;
-  company_ids: number[];
-  name: string;
-};
-
-export type RemoteCompany = {
-  id: number | undefined;
-  name: string;
-};
-
-const odooModelItinerary = "technical_support.itinerary";
-const odooModelCompany = "res.company";
-const odooModelVehicle = "fleet.vehicle";
-
-export async function fetchItineraries(client: OdooJSONRpc) {
+export async function fetchItineraries(env: Environment<Env>) {
   try {
-    const itineraries = await client.searchRead(
-      odooModelItinerary,
-      [],
-      ["id", "name"],
-      {
-        order: "create_date DESC",
-      },
-    );
-
-    return itineraries.map(
-      (itinerary: any) =>
-        ({
-          id: itinerary.id as number,
-          name: itinerary.name as string,
-        }) as RemoteItinerary,
-    );
+    return env["technical_support.itinerary"].searchRead([], ["id", "name"], {
+      order: "create_date DESC",
+    });
   } catch (error) {
     throw transformError(error, "Error al obtener itinerarios");
   }
 }
 
-export async function fetchCompanies(client: OdooJSONRpc) {
+export async function fetchCompanies(env: Environment<Env>) {
   try {
-    const companies = await client.searchRead(
-      odooModelCompany,
-      [],
-      ["id", "name"],
-    );
-    return companies.map(
-      (c: any) =>
-        ({ id: c.id as number, name: c.name as string }) as RemoteCompany,
-    );
+    return env["res.company"].searchRead([], ["id", "name"]);
   } catch (error) {
     throw transformError(error, "Error al obtener companías");
   }
 }
 
-export async function fetchVehicles(client: OdooJSONRpc) {
+export async function fetchVehicles(env: Environment<Env>) {
   try {
-    const vehicles = await client.searchRead(
-      odooModelVehicle,
+    const vehicles = await env["fleet.vehicle"].searchRead(
       [],
       ["id", "municipal_registry", "unit_number", "company_ids"],
     );

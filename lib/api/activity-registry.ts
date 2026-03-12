@@ -30,6 +30,7 @@ export async function registerActivity(
   tasks: TaskRegistry[],
   photos: string[],
 ) {
+  const pop = Logger.startSubStackTrace("activity-registry::registerActivity");
   const { sessionData } = globalStore.getState();
   if (sessionData == null) {
     return false;
@@ -46,6 +47,8 @@ export async function registerActivity(
     lng: location.longitude,
     userId: sessionData.uid,
   } as ActivityRegistryInsert;
+
+  logger.verbose("current activity registry", activityRegistry);
 
   try {
     await db.transaction(
@@ -81,6 +84,8 @@ export async function registerActivity(
               }) as TaskRegistryInsert,
           );
 
+          logger.verbose("current task registries", taskInsert);
+
           logger.verbose("Creando registros de tareas");
           await insertTaskRegistries(taskInsert, false, tx);
         }
@@ -115,6 +120,7 @@ export async function registerActivity(
       activity: activityRegistry,
       photos,
       tasks,
+      stackTrace: Logger.stackTrace,
     });
 
     globalStore.setState({
@@ -123,5 +129,7 @@ export async function registerActivity(
     });
 
     return false;
+  } finally {
+    pop();
   }
 }

@@ -18,6 +18,7 @@ export async function getSession(
   scope: Database = db,
 ) {
   const uid = userId !== undefined ? userId : await getCurrentUserId();
+  console.log(uid);
   if (uid == null) {
     return undefined;
   }

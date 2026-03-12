@@ -28,6 +28,7 @@ export async function startJob(
     return false;
   }
 
+  const pop = Logger.startSubStackTrace("job-registry::registerJob");
   const userId = sessionData.uid;
   const startDate = new Date();
 
@@ -39,6 +40,8 @@ export async function startJob(
     vehicleId,
     observation,
   } as JobRegistryInsert;
+
+  logger.verbose("current job registry", jobRegistry);
 
   try {
     await db.transaction(
@@ -87,9 +90,12 @@ export async function startJob(
       transformError(error, "Error al iniciar el trabajo", {
         jobRegistry,
         photos: images,
+        stackTrace: Logger.stackTrace,
       }),
     );
     return false;
+  } finally {
+    pop();
   }
 }
 
@@ -105,6 +111,7 @@ export async function finishJob(
     return false;
   }
 
+  const pop = Logger.startSubStackTrace("job-registry::finishJob");
   const userId = sessionData.uid;
   const date = new Date();
 
@@ -118,7 +125,7 @@ export async function finishJob(
     await db.transaction(
       async (tx) => {
         logger.verbose("Actualizando registro de trabajo");
-        await updateJobRegistry(jobRegistryId, update, false, tx);
+        await updateJobRegistry(jobRegistryId, update, false, true, tx);
 
         const signRegistry = [
           {
@@ -174,8 +181,11 @@ export async function finishJob(
         jobRegistryId,
         update,
         photos: images,
+        stackTrace: Logger.stackTrace,
       }),
     );
     return false;
+  } finally {
+    pop();
   }
 }

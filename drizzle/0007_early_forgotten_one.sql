@@ -1,0 +1,1 @@
+DROP INDEX `ts_taskreg_odooId_unique`;

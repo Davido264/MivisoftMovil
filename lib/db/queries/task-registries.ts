@@ -37,7 +37,20 @@ export function getAllPendingTaskRegistries(
     .select()
     .from(taskRegistries_table)
     .where(
-      sql`${taskRegistries_table.odooId} IS NULL OR ${taskRegistries_table.lastmod} > ${taskRegistries_table.lastsync}`,
+      sql`${taskRegistries_table.odooId} IS NULL`,
+    )
+    .orderBy(sql`${taskRegistries_table.lastmod} DESC`);
+}
+
+export function getAllPendingTaskRegistryUpdates(
+  userId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select()
+    .from(taskRegistries_table)
+    .where(
+      sql`${taskRegistries_table.odooId} IS NOT NULL AND ${taskRegistries_table.lastmod} > ${taskRegistries_table.lastsync}`,
     )
     .orderBy(sql`${taskRegistries_table.lastmod} DESC`);
 }

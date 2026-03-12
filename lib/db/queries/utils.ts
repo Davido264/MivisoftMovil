@@ -7,7 +7,7 @@ import { sql } from "drizzle-orm";
 import { union } from "drizzle-orm/sqlite-core";
 import { photos_table } from "../schema/photos";
 
-export function countPending(userId: number, scope: Database = db) {
+export async function countPending(userId: number, scope: Database = db) {
   const worktimePending = scope
     .select({ id: worktimeRegistries_table.id })
     .from(worktimeRegistries_table)

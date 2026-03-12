@@ -32,7 +32,7 @@ export async function getActivityRegistryOdooId(
     .then((r) => r[0].odooid);
 }
 
-export function getAllPendingActivityRegistries(
+export function getAllNewActivityRegistries(
   userId: number,
   scope: Database = db,
 ) {
@@ -40,12 +40,26 @@ export function getAllPendingActivityRegistries(
     .select()
     .from(activityRegistries_table)
     .where(
-      sql`${activityRegistries_table.odooId} IS NULL OR ${activityRegistries_table.lastmod} > ${activityRegistries_table.lastsync}`,
+      sql`${activityRegistries_table.odooId} IS NULL`,
     )
     .orderBy(sql`${activityRegistries_table.lastmod} DESC`);
 }
 
-export function getActivityRegistryCount(
+export function getAllPendingActivityRegistryUpdates(
+  userId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select()
+    .from(activityRegistries_table)
+    .where(
+      sql`${activityRegistries_table.odooId} IS NOT NULL AND ${activityRegistries_table.lastmod} > ${activityRegistries_table.lastsync}`,
+    )
+    .orderBy(sql`${activityRegistries_table.lastmod} DESC`);
+}
+
+
+export async function getActivityRegistryCount(
   jobRegistryId: number,
   scope: Database = db,
 ) {

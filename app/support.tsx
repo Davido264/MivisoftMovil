@@ -1,10 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { useGlobalStore } from "@/lib/store/application-state";
+import { globalStore, useGlobalStore } from "@/lib/store/application-state";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { Bug } from "@/components/lib/icons/Bug";
-import { exportLogs } from "@/lib/logger";
+import { exportLogs, Logger } from "@/lib/logger";
 import { useState } from "react";
+import { getPendingJobRegistryCreations } from "@/lib/db/queries/job-registry";
+import { getAllNewActivityRegistries } from "@/lib/db/queries/activity-registries";
+import { getAllPendingTaskRegistries } from "@/lib/db/queries/task-registries";
+import { getAllPendingWorktimeRegistries } from "@/lib/db/queries/worktime-registry";
 
 export default function Support() {
   const [loading, setLoading] = useState(false);
@@ -34,9 +38,23 @@ export default function Support() {
         variant="default"
         disabled={loading}
         className="flex-row w-full gap-3 mt-auto"
-        onPress={() => {
+        onPress={async () => {
           setLoading(true);
-          exportLogs().then(() => setLoading(false));
+          const { sessionData } = globalStore.getState();
+          if (sessionData == null) {
+            return exportLogs(null).then(() => setLoading(false));
+          }
+          const state = {
+            jobRegistry: await getPendingJobRegistryCreations(sessionData.uid),
+            activityRegistry: await getAllNewActivityRegistries(
+              sessionData.uid,
+            ),
+            taskRegistry: await getAllPendingTaskRegistries(sessionData.uid),
+            worktimeRegistry: await getAllPendingWorktimeRegistries(
+              sessionData.uid,
+            ),
+          };
+          return exportLogs(state).then(() => setLoading(false));
         }}
       >
         {loading ? (
@@ -70,10 +88,7 @@ function ErrorMessage() {
       <Text className="font-bold">
         Último error registrado ({lastError.type})
       </Text>
-      <Text>{lastError.message}</Text>
-      {lastError.original && (
-        <Text>Detalles: {lastError.original.message}</Text>
-      )}
+      <Text>{Logger.formatErrorMessage(lastError)}</Text>
     </ScrollView>
   );
 }

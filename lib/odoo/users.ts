@@ -1,21 +1,14 @@
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { transformError } from "../result";
+import { Environment } from "./_env";
+import { Env, RemoteUser } from "./env";
 
-export type RemoteUser = {
-  id: number | undefined;
-  name: string;
-  company: string;
-  tz: string;
-};
+export { RemoteUser } from "./env";
 
-const odooModelUser = "res.users";
-// { "id": 51, "full_name": "Technical Support / Administrator" } { "id": 50, "full_name": "Technical Support / User" },
 const groupIds = [50, 51];
 
-export async function fetchUsers(client: OdooJSONRpc) {
+export async function fetchUsers(env: Environment<Env>) {
   try {
-    const users = await client.searchRead(
-      odooModelUser,
+    const users = await env["res.users"].searchRead(
       [["groups_id", "in", groupIds]],
       ["id", "name", "company_id", "tz"],
     );

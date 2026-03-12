@@ -14,7 +14,7 @@ export async function insertJobRegistry(
   sync: boolean = false,
   scope: Database = db,
 ) {
-  return scope
+  return await scope
     .insert(jobRegistries_table)
     .values({ ...insert, ...dateObj(sync) })
     .returning({ id: jobRegistries_table.id })
@@ -25,21 +25,16 @@ export async function updateJobRegistry(
   jobRegistryId: number,
   update: Partial<JobRegistryInsert>,
   sync: boolean = false,
+  priority: boolean = false,
   scope: Database = db,
 ) {
-  return scope
+  return await scope
     .update(jobRegistries_table)
-    .set({ ...update, ...dateObj(sync) })
-    .where(sql`${jobRegistries_table.id} = ${jobRegistryId}`);
-}
-
-export async function updateJobRegistryPriority(
-  jobRegistryId: number,
-  scope: Database = db,
-) {
-  return scope
-    .update(jobRegistries_table)
-    .set({ priority: new Date() })
+    .set({
+      ...update,
+      ...dateObj(sync),
+      ...(priority ? { priority: new Date() } : {}),
+    })
     .where(sql`${jobRegistries_table.id} = ${jobRegistryId}`);
 }
 
@@ -47,6 +42,10 @@ export function purgeDeletedJobRegistries(
   jobRegistryIds: number[],
   scope: Database = db,
 ) {
+  if (jobRegistryIds.length === 0) {
+    return;
+  }
+
   return scope
     .delete(jobRegistries_table)
     .where(
@@ -67,4 +66,31 @@ export function remotifyJobRegistry(jobRegistry: JobRegistrySelect) {
     fleet_vehicle_id: jobRegistry.vehicleId,
     company_id: jobRegistry.companyId,
   } as RemoteJobReg;
+}
+
+export function prepareJobRegistryUpdatePayload(
+  jobRegistry: JobRegistrySelect,
+) {
+  return {
+    id: jobRegistry.odooId,
+    start_datetime: formatOdoo(jobRegistry.startDate),
+    end_datetime:
+      jobRegistry.endDate != null ? formatOdoo(jobRegistry.endDate) : undefined,
+    observation: jobRegistry.observation,
+    score: jobRegistry.score != null ? jobRegistry.score : 0,
+  } as RemoteJobReg;
+}
+
+export async function updateJobRegistryLastSync(
+  jobRegistryIds: number[],
+  scope: Database = db,
+) {
+  if (jobRegistryIds.length === 0) {
+    return;
+  }
+
+  await scope
+    .update(jobRegistries_table)
+    .set({ lastsync: new Date() })
+    .where(sql`${jobRegistries_table.id} IN ${jobRegistryIds}`);
 }

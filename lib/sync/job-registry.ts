@@ -8,20 +8,64 @@ import {
   purgeDeletedJobRegistries,
   updateJobRegistry,
 } from "@/lib/db/actions/job-registry";
-import { ResultAsync } from "neverthrow";
-import { transformError } from "../result";
+import { transformError } from "@/lib/result";
+import { Logger } from "@/lib/logger";
 
-export function reconciliateJobRegistries(
+export async function reconciliateJobRegistries(
   remoteEntities: RemoteJobReg[],
 ) {
-  const r = db.transaction(
-    async (tx) => {
-      for (const remote of remoteEntities) {
-        assert.notNull(remote.id, "remote.id");
-        const local = await getLocalJobRegistryFromOdooId(remote.id, tx);
+  const pop = Logger.startSubStackTrace("job-registry::reconciliate");
+  try {
+    await db.transaction(
+      async (tx) => {
+        for (const remote of remoteEntities) {
+          assert.notNull(remote.id, "remote.id");
+          const local = await getLocalJobRegistryFromOdooId(remote.id, tx);
 
-        if (local === undefined) {
-          await insertJobRegistry(
+          if (local === undefined) {
+            await insertJobRegistry(
+              {
+                odooId: remote.id,
+                itineraryId: remote.itinerary_id,
+                userId: remote.user_id,
+                observation: remote.observation,
+                companyId: remote.company_id,
+                startDate: parseOdoo(remote.start_datetime),
+                vehicleId: remote.fleet_vehicle_id,
+                endDate: remote.end_datetime
+                  ? parseOdoo(remote.end_datetime)
+                  : undefined,
+                score: remote.score,
+              },
+              true,
+              tx,
+            );
+            continue;
+          }
+
+          // local.lastsync ??= new Date(0);
+          // if (
+          //   local.lastmod <= local.lastsync &&
+          //   remote.lastmod <= local.lastsync
+          // ) {
+          //   continue; // all synced
+          // }
+
+          // if (local.lastmod > local.lastsync) {
+          //   // TODO: For now, local wins always
+          //   continue;
+          // }
+
+          // if (
+          //   local.lastmod > local.lastsync &&
+          //   remote.lastmod > local.lastsync
+          // ) {
+          //   // TODO: Conflict resolution
+          //   continue;
+          // }
+
+          await updateJobRegistry(
+            local.id,
             {
               odooId: remote.id,
               itineraryId: remote.itinerary_id,
@@ -36,56 +80,23 @@ export function reconciliateJobRegistries(
               score: remote.score,
             },
             true,
+            false,
             tx,
           );
-          continue;
         }
 
-        local.lastsync ??= new Date(0);
-        if (
-          local.lastmod <= local.lastsync &&
-          remote.lastmod <= local.lastsync
-        ) {
-          continue; // all synced
-        }
-
-        if (local.lastmod > local.lastsync) {
-          // TODO: For now, local wins always
-          continue;
-        }
-
-        if (local.lastmod > local.lastsync && remote.lastmod > local.lastsync) {
-          // TODO: Conflict resolution
-          continue;
-        }
-
-        await updateJobRegistry(
-          local.id,
-          {
-            odooId: remote.id,
-            itineraryId: remote.itinerary_id,
-            userId: remote.user_id,
-            observation: remote.observation,
-            companyId: remote.company_id,
-            startDate: parseOdoo(remote.start_datetime),
-            vehicleId: remote.fleet_vehicle_id,
-            endDate: remote.end_datetime
-              ? parseOdoo(remote.end_datetime)
-              : undefined,
-            score: remote.score,
-          },
-          true,
+        await purgeDeletedJobRegistries(
+          remoteEntities.map((i) => i.id),
           tx,
         );
-      }
-
-      await purgeDeletedJobRegistries(
-        remoteEntities.map((i) => i.id!),
-        tx,
-      );
-    },
-    { behavior: transBehavior },
-  );
-
-  return ResultAsync.fromPromise(r, (e) => transformError(e, "Error al actualizar registros de trabajos"));
+      },
+      { behavior: transBehavior },
+    );
+  } catch (e) {
+    throw transformError(e, "Error al actualizar registros de trabajos", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }

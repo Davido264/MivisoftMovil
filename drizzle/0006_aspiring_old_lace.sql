@@ -1,0 +1,1 @@
+ALTER TABLE `ts_vehicles` ADD `companyId` integer;

@@ -1,26 +1,13 @@
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { formatOdoo, parseOdoo } from "@/lib/date";
 import { transformError } from "@/lib/result";
+import { Env, RemoteJobReg } from "./env";
+import { Environment } from "./_env";
 
-export type RemoteJobReg = {
-  id?: number;
-  itinerary_id: number;
-  user_id: number;
-  start_datetime: string;
-  end_datetime?: string;
-  observation: string;
-  score?: number;
-  fleet_vehicle_id: number;
-  company_id: number;
-  lastmod: Date;
-};
+export { RemoteJobReg } from "./env";
 
-const odooModel = "technical_support.job_registry";
-
-export async function fetchJobRegistries(client: OdooJSONRpc, maxAge: Date) {
+export async function fetchJobRegistries(env: Environment<Env>, maxAge: Date) {
   try {
-    const registries = await client.searchRead(
-      odooModel,
+    const registries = await env["technical_support.job_registry"].searchRead(
       [["create_date", ">", formatOdoo(maxAge)]],
       [
         "id",
@@ -58,14 +45,15 @@ export async function fetchJobRegistries(client: OdooJSONRpc, maxAge: Date) {
 }
 
 export async function writeJobRegistry(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   id: number,
-  record: RemoteJobReg,
+  record: RemoteJobReg | { activity_registries: any[] },
 ) {
   try {
-    await client.update(odooModel, id, {
+    await env["technical_support.job_registry"].update(id, {
       ...record,
-      score: record.score ? `${record.score}` : undefined,
+      // @ts-ignore
+      score: "score" in record && record.score ? `${record.score}` : undefined,
     });
     return id;
   } catch (error) {
@@ -76,12 +64,13 @@ export async function writeJobRegistry(
 }
 
 export async function createJobRegistry(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   record: RemoteJobReg,
 ) {
   try {
-    return await client.create(odooModel, {
+    return await env["technical_support.job_registry"].create({
       ...record,
+      // @ts-ignore
       score: record.score ? `${record.score}` : undefined,
     });
   } catch (error) {
@@ -92,13 +81,37 @@ export async function createJobRegistry(
 }
 
 export async function writeEndDateTime(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   id: number,
   endDateTime: string,
 ) {
   try {
-    return await client.update(odooModel, id, { end_datetime: endDateTime });
+    // @ts-ignore
+    return await env["technical_support.job_registry"].update(id, {
+      end_datetime: endDateTime,
+    });
   } catch (error) {
     throw transformError(error, "Error al actualizar la fecha de finalización");
+  }
+}
+
+export async function getJobRegistryOdooIds(
+  env: Environment<Env>,
+  userId: number,
+  uuid: string[],
+) {
+  try {
+    const map = await env["technical_support.job_registry"].searchRead(
+      [
+        ["uuid", "in", uuid],
+        ["user_id", "=", userId],
+      ],
+      ["id", "uuid"],
+    );
+    return new Map(map.map((r) => [r.uuid, r.id])) as Map<string, number>;
+  } catch (error) {
+    throw transformError(error, "Error al obtener id remoto", {
+      function: "getJobRegistryOdooIds",
+    });
   }
 }

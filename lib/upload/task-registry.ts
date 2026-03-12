@@ -1,72 +1,167 @@
 import db from "@/lib/db";
 import { Logger } from "@/lib/logger";
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import {
   createTaskRegistry,
   writeTaskRegistry,
 } from "@/lib/odoo/task-registry";
 import {
+  prepareTaskRegistryUpdatePayload,
   remotifyTaskRegistry,
   updateTaskRegistry,
+  updateTaskRegistryLastSync,
 } from "@/lib/db/actions/task-registry";
-import { getAllPendingTaskRegistries } from "@/lib/db/queries/task-registries";
+import {
+  getAllPendingTaskRegistries,
+  getAllPendingTaskRegistryUpdates,
+} from "@/lib/db/queries/task-registries";
 import { getActivityRegistryOdooId } from "@/lib/db/queries/activity-registries";
 import assert from "@/lib/assert";
-import { TaskRegistrySelect } from "@/lib/db/schema/task-registry";
-import { ResultAsync } from "neverthrow";
-import { transformError, wrapMultiErrors } from "@/lib/result";
+import { isNetworkError, transformError } from "@/lib/result";
+import { Env } from "../odoo/env";
+import { Environment } from "../odoo/_env";
 
 const logger = Logger.getLogger("UPLOAD::TASK-REGISTRY");
 
-export function uploadTaskRegistries(client: OdooJSONRpc, userId: number) {
-  logger.verbose("Subiendo registros pendientes");
-  return ResultAsync.fromPromise(getAllPendingTaskRegistries(userId, db), (e) =>
-    transformError(e, "Error al obtener registros pendientes"),
-  )
-    .andThen((tasks) =>
-      ResultAsync.combineWithAllErrors(
-        tasks.map((t) => uploadTaskRegistry(t, client)),
-      ),
-    )
-    .map(() => logger.verbose("Subida exitosa"))
-    .mapErr((e) => wrapMultiErrors(e, "Error al subir registros"));
+export async function updateRemoteTaskRegistries(
+  env: Environment<Env>,
+  userId: number,
+) {
+  const pop = Logger.startSubStackTrace("upload::uploadTaskRegistries");
+  logger.verbose("Subiendo registros de tareas pendientes");
+  try {
+    const tasks = await getAllPendingTaskRegistryUpdates(userId, db);
+    // TODO: we can parallelize some of this requests
+    for (const t of tasks) {
+      const toUpload = prepareTaskRegistryUpdatePayload(t);
+      await writeTaskRegistry(env, toUpload.id, toUpload);
+    }
+
+    db.transaction(
+      async (tx) => {
+        await updateTaskRegistryLastSync(
+          tasks.map((t) => t.id!),
+          tx,
+        );
+      },
+      { behavior: "immediate" },
+    );
+  } catch (e) {
+    throw transformError(e, "Error al subir registros", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
-function uploadTaskRegistry(task: TaskRegistrySelect, client: OdooJSONRpc) {
-  const toUpload = remotifyTaskRegistry(task);
+export async function createRemoteTaskRegistries(
+  env: Environment<Env>,
+  userId: number,
+) {
+  const pop = Logger.startSubStackTrace("upload::uploadTaskRegistries");
+  logger.verbose("Subiendo registros pendientes");
 
-  return ResultAsync.fromPromise(
-    getActivityRegistryOdooId(toUpload.activity_registry_id),
-    (e) => transformError(e, "Error obteniendo id de registro de actividad"),
-  )
-    .andThen(
-      ResultAsync.fromThrowable(
-        async (odooId) => {
-          assert.notNull(odooId);
-          toUpload.activity_registry_id = odooId;
-          return toUpload;
-        },
-        (e) =>
-          transformError(e, "Error obteniendo id de registro de actividad"),
-      ),
-    )
-    .andThen((toUpload) => {
-      if (toUpload.id) {
-        return writeTaskRegistry(client, toUpload.id, toUpload);
-      } else {
-        return createTaskRegistry(client, toUpload);
+  const idMap = new Map<number, number>();
+  try {
+    const tasks = await getAllPendingTaskRegistries(userId, db);
+
+    for (const t of tasks) {
+      const toUpload = remotifyTaskRegistry(t);
+      const aOdooId = await getActivityRegistryOdooId(toUpload.activity_registry_id, db);
+      assert.notNull(aOdooId);
+      toUpload.activity_registry_id = aOdooId;
+
+      let odooId: number = 0;
+      let retries = 3;
+      while (true) {
+        try {
+          odooId = await createTaskRegistry(env, toUpload);
+          idMap.set(t.id, odooId);
+          break;
+        } catch (e) {
+          if (isNetworkError(e)) {
+            logger.verbose("Error al subir registro, reintentando");
+            --retries;
+          }
+          if (retries <= 0 || !isNetworkError(e)) {
+            throw transformError(e, "Error al subir registros", {
+              stackTrace: Logger.stackTrace,
+            });
+          }
+        }
       }
-    })
-    .andThen((odooId) =>
-      ResultAsync.fromPromise(
-        updateTaskRegistry(
-          task.id,
-          {
-            odooId,
-          },
-          true,
-        ),
-        (e) => transformError(e, "Error al actualizar registro de tarea", task),
-      ),
-    );
+    }
+    Logger.popStackTrace();
+
+    await db.transaction(async (tx) => {
+      for (const [id, odooId] of idMap) {
+        await updateTaskRegistry(id, { odooId }, true, tx);
+      }
+    });
+    Logger.popStackTrace();
+
+    logger.verbose("Subida exitosa");
+  } catch (e) {
+    throw transformError(e, "Error al subir registros", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
+}
+
+export async function uploadTaskRegistries(
+  env: Environment<Env>,
+  userId: number,
+) {
+  const pop = Logger.startSubStackTrace("upload::uploadTaskRegistries");
+  logger.verbose("Subiendo registros pendientes");
+
+  try {
+    Logger.pushStackTrace("upload::uploadTaskRegistries+retrieve");
+    const tasks = await getAllPendingTaskRegistries(userId, db);
+    Logger.popStackTrace();
+
+    Logger.pushStackTrace("upload::uploadTaskRegistries+upload");
+    const idMap = new Map<number, number>();
+    for (const t of tasks) {
+      const toUpload = remotifyTaskRegistry(t);
+
+      let retries = 3;
+      while (true) {
+        try {
+          const odooId = await createTaskRegistry(env, toUpload);
+          idMap.set(t.id, odooId);
+          break;
+        } catch (e) {
+          if (isNetworkError(e)) {
+            logger.verbose("Error al subir registro, reintentando");
+            --retries;
+          }
+          if (retries <= 0 || !isNetworkError(e)) {
+            throw transformError(e, "Error al subir registros", {
+              stackTrace: Logger.stackTrace,
+            });
+          }
+        }
+      }
+    }
+    Logger.popStackTrace();
+
+    Logger.pushStackTrace("upload::uploadTaskRegistries+update-sync-state");
+    await db.transaction(async (tx) => {
+      for (const [id, odooId] of idMap) {
+        await updateTaskRegistry(id, { odooId }, true, tx);
+      }
+    });
+    Logger.popStackTrace();
+
+    logger.verbose("Subida exitosa");
+  } catch (e) {
+    throw transformError(e, "Error al subir registros", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }

@@ -133,7 +133,7 @@ export async function getJobRegistryOdooId(id: number, scope: Database = db) {
     .then((r) => r[0].odooid);
 }
 
-export function getAllPendingJobRegistries(
+export function getPendingJobRegistryCreations(
   userId: number,
   scope: Database = db,
 ) {
@@ -141,7 +141,20 @@ export function getAllPendingJobRegistries(
     .select()
     .from(jobRegistries_table)
     .where(
-      sql`${jobRegistries_table.odooId} IS NULL OR ${jobRegistries_table.lastmod} > ${jobRegistries_table.lastsync} AND ${jobRegistries_table.userId} = ${userId}`,
+      sql`${jobRegistries_table.odooId} IS NULL`,
+    )
+    .orderBy(sql`${jobRegistries_table.lastmod} DESC`);
+}
+
+export function getAllPendingJobRegistryUpdates(
+  userId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select()
+    .from(jobRegistries_table)
+    .where(
+      sql`${jobRegistries_table.odooId} IS NOT NULL AND ${jobRegistries_table.lastmod} > ${jobRegistries_table.lastsync}`,
     )
     .orderBy(sql`${jobRegistries_table.lastmod} DESC`);
 }

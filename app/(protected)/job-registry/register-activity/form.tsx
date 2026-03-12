@@ -18,6 +18,7 @@ import { useSharedTaskListStore } from "@/lib/store/tasks-list";
 import { registerActivity } from "@/lib/api/activity-registry";
 import assert from "@/lib/assert";
 import { useSharedImageListStore } from "@/lib/store/image-list";
+import { syncAll } from "@/lib/api/sync";
 
 export default function RegisterActivityForm() {
   const { actid, actName, jobregid, actregid, taskStoreKey, imageStoreKey } =
@@ -91,6 +92,7 @@ export default function RegisterActivityForm() {
       );
 
       if (ok) {
+        queueMicrotask(() => syncAll());
         router.dismissTo("/");
       }
     },

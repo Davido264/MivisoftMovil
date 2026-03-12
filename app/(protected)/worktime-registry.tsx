@@ -54,18 +54,15 @@ export default function WorktimeForm() {
         return await validateExternalInputs();
       },
     },
-    onSubmit: async ({ value, meta }) => {
+    onSubmit: async ({ value }) => {
       const coords = await getLocation();
       if (coords == null) {
         return;
       }
 
-      const isClosing = data[0]?.endDate == null;
       const ok = await registerWorktime(coords, value.comment, value.photos);
       if (ok) {
-        if (isClosing) {
-          queueMicrotask(() => syncAll());
-        }
+        queueMicrotask(() => syncAll());
         router.dismissTo("/");
       }
     },

@@ -5,106 +5,145 @@ import {
 } from "@/lib/odoo/job-registry";
 import db, { transBehavior } from "@/lib/db";
 import {
+  prepareJobRegistryUpdatePayload,
   remotifyJobRegistry,
   updateJobRegistry,
+  updateJobRegistryLastSync,
 } from "@/lib/db/actions/job-registry";
 import { Logger } from "@/lib/logger";
 import { setSeverIdForJobRegistryImage } from "@/lib/db/actions/photos";
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import {
-  getAllPendingJobRegistries,
+  getPendingJobRegistryCreations,
+  getAllPendingJobRegistryUpdates,
   getEndDateTimesOdooIdsAndIds,
 } from "@/lib/db/queries/job-registry";
-import { ResultAsync } from "neverthrow";
-import { transformError, wrapMultiErrors } from "@/lib/result";
-import { JobRegistrySelect } from "../db/schema/job-registry";
+import { isNetworkError, transformError } from "@/lib/result";
 import { updateWorktimeRegistryJobRegistryOdooId } from "../db/actions/worktime-registry";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { formatOdoo } from "../date";
+import { Env } from "../odoo/env";
+import { Environment } from "../odoo/_env";
 
 const logger = Logger.getLogger("UPLOAD::JOB-REGISTRY");
 const retriggersQueueKey = "job-registry::retriggers::queue";
 
-export function uploadJobRegistries(client: OdooJSONRpc, userId: number) {
-  logger.verbose("Subiendo registros pendientes");
-
-  return ResultAsync.fromPromise(getAllPendingJobRegistries(userId, db), (e) =>
-    transformError(e, "Error al obtener registros pendientes"),
-  )
-    .andThen((jobs) =>
-      ResultAsync.combineWithAllErrors(
-        jobs.map((j) => uploadRegistry(j, client)),
-      ),
-    )
-    .map(() => logger.verbose("Subida exitosa"))
-    .mapErr((e) => wrapMultiErrors(e, "Error al subir registros"));
-}
-
-export function retriggerJobRegistryStatusComputation(
-  client: OdooJSONRpc,
+export async function updateRemoteJobRegistries(
+  env: Environment<Env>,
   userId: number,
 ) {
-  logger.verbose("Recalculando status");
-  return ResultAsync.fromSafePromise(
-    AsyncStorage.getItem(retriggersQueueKey).then((r) =>
-      r != null ? (JSON.parse(r) as number[]) : [],
-    ),
-  )
-    .andThen((r) =>
-      ResultAsync.fromPromise(
-        getEndDateTimesOdooIdsAndIds(r).then((r) =>
-          r.map((re) => ({
-            localId: re.localId,
-            odooId: re.odooId!,
-            endDateTime: formatOdoo(re.endDateTime!),
-          })),
-        ),
-        (e) =>
-          transformError(
-            e,
-            "No se pudo consultar las fechas de finalización para los ids",
-            r,
-          ),
-      ),
-    )
-    .andThen((r) =>
-      ResultAsync.combineWithAllErrors(
-        r.map((i) =>
-          updateEndDateTime(i.endDateTime, i.odooId, i.localId, client),
-        ),
-      ),
-    )
-    .andThen(() =>
-      ResultAsync.fromPromise(
-        AsyncStorage.setItem(retriggersQueueKey, JSON.stringify([])),
-        (e) => transformError(e, "No se pudo vaciar la cola"),
-      ),
+  const pop = Logger.startSubStackTrace("upload::uploadJobRegistries");
+  logger.verbose("Actualizando registros de trabajo pendientes");
+  try {
+    const pending = await getAllPendingJobRegistryUpdates(userId, db);
+    for (const job of pending) {
+      const toUpload = prepareJobRegistryUpdatePayload(job);
+      await writeJobRegistry(env, toUpload.id, toUpload);
+      await enqueueRetrigger(toUpload.id);
+    }
+
+    db.transaction(
+      async (tx) => {
+        await updateJobRegistryLastSync(
+          pending.map((p) => p.id!),
+          tx,
+        );
+      },
+      { behavior: "immediate" },
     );
+
+    logger.verbose("Actualizando trabajos pendientes exitosa");
+  } catch (e) {
+    throw transformError(e, "Error al subir registros", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
-function uploadRegistry(job: JobRegistrySelect, client: OdooJSONRpc) {
-  const toUpload = remotifyJobRegistry(job);
+export async function createRemoteJobRegistries(
+  env: Environment<Env>,
+  userId: number,
+) {
+  const pop = Logger.startSubStackTrace("upload::uploadJobRegistries");
+  logger.verbose("Subiendo registros pendientes");
 
-  return (
-    toUpload.id
-      ? writeJobRegistry(client, toUpload.id, toUpload)
-      : createJobRegistry(client, toUpload)
-  ).map((odooId) =>
-    ResultAsync.fromPromise(
-      db.transaction(
-        async (tx) => {
-          await setSeverIdForJobRegistryImage(job.id, `${odooId}`, tx);
-          await updateJobRegistry(job.id, { odooId }, true, tx);
-          await updateWorktimeRegistryJobRegistryOdooId(job.id, odooId, tx);
-          if (toUpload.end_datetime) {
-            enqueueRetrigger(job.id);
+  try {
+    const pending = await getPendingJobRegistryCreations(userId, db);
+    const idMap = new Map<number, number>();
+
+    for (const job of pending) {
+      const toUpload = remotifyJobRegistry(job);
+
+      let retries = 3;
+      while (true) {
+        try {
+          const odooId = await createJobRegistry(env, toUpload);
+          idMap.set(job.id, odooId);
+          break;
+        } catch (e) {
+          if (isNetworkError(e)) {
+            logger.verbose("Error al subir registro, reintentando");
+            --retries;
           }
-        },
-        { behavior: transBehavior },
-      ),
-      (e) => transformError(e, "Error al actualizar registro de trabajo", job),
-    ),
+          if (retries <= 0 || !isNetworkError(e)) {
+            throw transformError(e, "Error al subir registros", {
+              stackTrace: Logger.stackTrace,
+            });
+          }
+        }
+      }
+    }
+
+    await db.transaction(async (tx) => {
+      for (const [id, odooId] of idMap) {
+        await updateJobRegistry(id, { odooId }, true, false, tx);
+        await updateWorktimeRegistryJobRegistryOdooId(id, odooId, tx);
+        await setSeverIdForJobRegistryImage(id, `${odooId}`, tx);
+        await enqueueRetrigger(odooId);
+      }
+    });
+
+    logger.verbose("Subida exitosa");
+  } catch (e) {
+    throw transformError(e, "Error al subir registros", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
+}
+
+export async function retriggerJobRegistryStatusComputation(
+  env: Environment<Env>,
+) {
+  const pop = Logger.startSubStackTrace(
+    "upload::retriggerJobRegistryStatusComputation",
   );
+  try {
+    logger.verbose("Recalculando status");
+    const r = await AsyncStorage.getItem(retriggersQueueKey).then((r) =>
+      r != null ? (JSON.parse(r) as number[]) : [],
+    );
+
+    const maps = await getEndDateTimesOdooIdsAndIds(r);
+    for (const m of maps) {
+      await updateEndDateTime(
+        env,
+        formatOdoo(m.endDateTime!),
+        m.odooId!,
+        m.localId,
+      );
+    }
+
+    await AsyncStorage.setItem(retriggersQueueKey, JSON.stringify([]));
+  } catch (e) {
+    throw transformError(e, "No se pudo vaciar la cola", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
 async function enqueueRetrigger(id: number) {
@@ -115,22 +154,29 @@ async function enqueueRetrigger(id: number) {
   await AsyncStorage.setItem(retriggersQueueKey, JSON.stringify(queue));
 }
 
-function updateEndDateTime(
+async function updateEndDateTime(
+  env: Environment<Env>,
   endDateTime: string,
   odooId: number,
   localId: number,
-  client: OdooJSONRpc,
 ) {
-  return writeEndDateTime(client, odooId, endDateTime).map(() =>
-    ResultAsync.fromPromise(
-      db.transaction(
+  const pop = Logger.startSubStackTrace("upload::job-registry");
+  try {
+    if (await writeEndDateTime(env, odooId, endDateTime)) {
+      await db.transaction(
         async (tx) => {
-          await updateJobRegistry(localId, {}, true, tx);
+          await updateJobRegistry(localId, {}, true, false, tx);
         },
         { behavior: transBehavior },
-      ),
-      (e) =>
-        transformError(e, "Error al actualizar registro de trabajo", localId),
-    ),
-  );
+      );
+    }
+  } catch (e) {
+    throw transformError(e, "Error al actualizar registro de trabajo", {
+      localId,
+      odooId,
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }

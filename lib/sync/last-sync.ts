@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Logger } from "@/lib/logger";
 import { transformError } from "@/lib/result";
-import { ResultAsync } from "neverthrow";
 
 const logger = Logger.getLogger("SYNC::STATUS");
 
@@ -27,25 +26,25 @@ export async function isDirty(key: CacheKey) {
   return lastSync == null || Date.now() - lastSync.getTime() > frecuencyms;
 }
 
-function getLastSync(lastSyncKey: string) {
-  return ResultAsync.fromPromise(AsyncStorage.getItem(lastSyncKey), (e) => {
-    logger.warn(
-      "No se pudo obtener la fecha de última actualización, se asumirá que no se sincronizó",
-      transformError(e, "Error al obtener última actualización"),
-    );
-  })
-    .map((d) => (d != null ? new Date(d) : null))
-    .unwrapOr(null);
+async function getLastSync(lastSyncKey: string) {
+  return AsyncStorage.getItem(lastSyncKey)
+    .then((d) => (d != null ? new Date(d) : null))
+    .catch((e) => {
+      logger.warn(
+        "No se pudo obtener la fecha de última actualización, se asumirá que no se sincronizó",
+        transformError(e, "Error al obtener última actualización"),
+      );
+      return null;
+    });
 }
 
-export function updateLastSync(key: CacheKey) {
-  return ResultAsync.fromPromise(
-    AsyncStorage.setItem(cacheKeys[key], new Date().toISOString()),
-    (e) => {
-      logger.warn(
-        "No se pudo almacenar la nueva fecha de última actualización, futuras sincronizaciónes no usarán este valor",
-        transformError(e, "Error al almacenar última actualización"),
-      );
-    },
-  ).unwrapOr(undefined);
+export async function updateLastSync(key: CacheKey) {
+  try {
+    await AsyncStorage.setItem(cacheKeys[key], new Date().toISOString());
+  } catch (e) {
+    logger.warn(
+      "No se pudo almacenar la nueva fecha de última actualización, futuras sincronizaciónes no usarán este valor",
+      transformError(e, "Error al almacenar última actualización"),
+    );
+  }
 }

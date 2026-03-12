@@ -29,6 +29,7 @@ export async function registerWorktime(
   const timeZone = sessionData.tz;
   const date = new Date();
 
+  const pop = Logger.startSubStackTrace("worktime-registry::registerWorktime");
   try {
     await db.transaction(
       async (tx) => {
@@ -73,7 +74,7 @@ export async function registerWorktime(
         globalStore.setState({
           pendingChanges: await countPending(userId).catch(() => 0),
         });
-        logger.info("Jornada registrada exitosamente");
+        logger.success("Jornada registrada exitosamente");
       },
       { behavior: transBehavior },
     );
@@ -87,10 +88,13 @@ export async function registerWorktime(
         location,
         observation,
         photos,
+        stackTrace: Logger.stackTrace,
       }),
     );
 
     return false;
+  } finally {
+    pop();
   }
 }
 

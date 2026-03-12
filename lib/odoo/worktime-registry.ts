@@ -1,38 +1,23 @@
 import assert from "@/lib/assert";
 import { computeYYYYMMDD, dateFromYYYYMMDD, parseOdoo } from "@/lib/date";
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { transformError } from "../result";
+import { Env, RemoteWorktimeRegistry } from "./env";
+import { Environment } from "./_env";
 
-export type RemoteWorktimeRegistry = {
-  id: number;
-  user_id: number;
-  day: number;
-  serial: number;
-  start_datetime: string;
-  end_datetime: string;
-  start_lat: number;
-  start_lng: number;
-  end_lat: number;
-  end_lng: number;
-  observation: string;
-  lastmod: Date;
-};
-
-const odooModel = "technical_support.worktime_registry";
-const odooModelTw = "technical_support.time_window";
+export { RemoteWorktimeRegistry } from "./env";
 
 export async function fetchLatestWorktimeRegistry(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   userId: number,
   timezone: string,
 ) {
   try {
-    const worktimes = await client.searchRead(
-      odooModel,
-      [["user_id", "=", userId]],
-      ["id", "start_datetime"],
-      { order: "start_datetime desc", limit: 1 },
-    );
+    const worktimes = await env[
+      "technical_support.worktime_registry"
+    ].searchRead([["user_id", "=", userId]], ["id", "start_datetime"], {
+      order: "start_datetime desc",
+      limit: 1,
+    });
 
     const wt = worktimes.length > 0 ? worktimes[0] : undefined;
     if (wt === undefined) {
@@ -45,8 +30,7 @@ export async function fetchLatestWorktimeRegistry(
     assert.notNull(wtId, "wtId");
     assert.notNull(wtStart, "wtStart");
 
-    const timeWindows = await client.searchRead(
-      odooModelTw,
+    const timeWindows = await env["technical_support.time_window"].searchRead(
       [["worktime_registry_id", "=", wtId]],
       [
         "worktime_registry_id",
@@ -88,19 +72,58 @@ export async function fetchLatestWorktimeRegistry(
 }
 
 export async function bulkUploadWorktimeRegistries(
-  client: OdooJSONRpc,
-  records: RemoteWorktimeRegistry[],
+  env: Environment<Env>,
+  records: Omit<
+    RemoteWorktimeRegistry,
+    "id" | "lastmod" | "job_registry_ids"
+  >[],
 ) {
   try {
-    const result = await client.call_kw(odooModel, "bulk_upload", [records]);
+    const result = await env["technical_support.worktime_registry"].call_kw(
+      "bulk_upload",
+      [records],
+    );
     return result as number;
   } catch (error) {
     throw transformError(error, "Error al subir registros de jornadas");
   }
 }
 
+export async function getJobRegistriesLinkedToWorktimeRegistry(
+  env: Environment<Env>,
+  userId: number,
+  uuid: string,
+) {
+  try {
+    const worktimeRegistryId = await env[
+      "technical_support.worktime_registry"
+    ].searchRead(
+      [
+        ["user_id", "=", userId],
+        ["uuid", "=", uuid],
+      ],
+      ["job_registry_ids"],
+    );
+
+    if (worktimeRegistryId.length === 0) {
+      return new Set<number>();
+    }
+
+    assert(
+      worktimeRegistryId.length === 1,
+      "Multiple worktime registries found",
+    );
+
+    return new Set<number>(
+      (worktimeRegistryId[0] as any).job_registry_ids.map((r: any) => r[0]),
+    );
+  } catch (error) {
+    throw transformError(error, "Error al obtener registros de jornadas");
+  }
+}
+
 export async function linkJobRegistryToWorktimeRegistry(
-  client: OdooJSONRpc,
+  env: Environment<Env>,
   userId: number,
   day: number,
   jobRegistryIds: number[],
@@ -110,7 +133,9 @@ export async function linkJobRegistryToWorktimeRegistry(
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 1);
 
-    const worktimeRegistryId = await client.search(odooModel, [
+    const worktimeRegistryId = await env[
+      "technical_support.worktime_registry"
+    ].search([
       ["user_id", "=", userId],
       ["start_datetime", ">=", startDate],
       ["start_datetime", "<", endDate],
@@ -125,9 +150,13 @@ export async function linkJobRegistryToWorktimeRegistry(
       "Multiple worktime registries found",
     );
 
-    await client.update(odooModel, worktimeRegistryId[0], {
-      job_registry_ids: jobRegistryIds.map((id) => [4, id]),
-    });
+    await env["technical_support.worktime_registry"].update(
+      worktimeRegistryId[0],
+      // @ts-ignore
+      {
+        job_registry_ids: jobRegistryIds.map((id) => [4, id]),
+      },
+    );
   } catch (error) {
     throw transformError(error, "Error al actualizar registros de jornadas");
   }

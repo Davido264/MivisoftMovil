@@ -1,4 +1,4 @@
-import db, { Database } from "@/lib/db";
+import db from "@/lib/db";
 import { photos_table, PhotoSelect } from "@/lib/db/schema/photos";
 import { Logger } from "@/lib/logger";
 import {
@@ -6,76 +6,76 @@ import {
   transformError,
   wrapMultiErrors,
 } from "@/lib/result";
-import OdooJSONRpc from "@fernandoslim/odoo-jsonrpc";
 import { sql } from "drizzle-orm";
 import { File } from "expo-file-system/next";
-import { err, ok, okAsync, ResultAsync } from "neverthrow";
 import { fetch } from "expo/fetch";
+import { odoo } from "../odoo/env";
+import { OdooSession } from "../db/schema/user-session";
 
 const logger = Logger.getLogger("UPLOAD::PHOTO");
 
-export function uploadPhotos(client: OdooJSONRpc, scope: Database = db) {
-  logger.verbose("Iniciando subida de fotos");
-  return ResultAsync.fromPromise(
-    scope
+export async function uploadPhotos(sessionData: OdooSession) {
+  const pop = Logger.startSubStackTrace("upload::uploadPhotos");
+  try {
+    Logger.pushStackTrace("upload::uploadPhotos+connect");
+    console.log(sessionData);
+    const { sessionId, usr } = await odoo.connect({
+      sessionId: sessionData.sid,
+    });
+    Logger.popStackTrace();
+
+    logger.verbose("Iniciando subida de fotos");
+    Logger.pushStackTrace("upload::uploadPhotos+collect");
+    const photos = await db
       .select()
       .from(photos_table)
       .where(
-        sql`${photos_table.odooId} IS NOT NULL AND ${photos_table.dirty} = 1`,
-      ),
-    (e) => transformError(e, "Error al obtener fotos para subir"),
-  )
-    .andThrough((photos) =>
-      ResultAsync.fromSafePromise(
-        _internalUploadPhotos(photos, client, scope),
-      ).andThen((errs) =>
-        errs.length === 0
-          ? ok()
-          : err(wrapMultiErrors(errs, "Error al subir las imágenes")),
-      ),
-    )
-    .andTee(() =>
-      ResultAsync.fromPromise(
-        scope.delete(photos_table).where(sql`${photos_table.dirty} = ${false}`),
-        (e) => {},
-      ),
-    );
-}
-
-async function _internalUploadPhotos(
-  photos: PhotoSelect[],
-  client: OdooJSONRpc,
-  scope: Database,
-) {
-  // maximum number of parallel uploads ideal for an unestable connection and lowend device
-  const MAX_PARALLEL_UPLOADS = 3;
-  const batches = batched(photos, MAX_PARALLEL_UPLOADS);
-  const errors = [] as ApplicationError[];
-
-  for (const batch of batches) {
-    logger.verbose(`Subiendo lote de ${batch.length} fotos`);
-    for (const [p, pf] of batch) {
-      const rh = await updateHorphanPhotos(p, pf, scope);
-
-      if (rh.isErr()) {
-        errors.push(rh.error);
-        continue;
-      }
-
-      const ru = await uploadPhoto(client, p, pf).andThen((r) =>
-        markUploadedAndDeleteFile(p, pf, scope),
+        sql`${photos_table.odooId} IS NOT NULL AND ${photos_table.dirty} = 1 AND ${photos_table.userId} = ${usr.id}`,
       );
+    Logger.popStackTrace();
 
-      if (ru.isErr()) {
-        errors.push(ru.error);
+    const MAX_PARALLEL_UPLOADS = 3;
+    const batches = batched(photos, MAX_PARALLEL_UPLOADS);
+    const errors = [] as ApplicationError[];
+
+    for (const batch of batches) {
+      logger.verbose(`Subiendo lote de ${batch.length} fotos`);
+      for (const [p, pf] of batch) {
+        try {
+          await updateHorphanPhotos(p, pf);
+          await uploadPhoto(sessionId, p, pf);
+          await markUploadedAndDeleteFile(p, pf);
+        } catch (e) {
+          const ctx = { photo: p, uploaded: pf };
+          logger.warn("Error al subir foto", ctx);
+          errors.push(transformError(e, "Error al subir foto", ctx));
+        }
       }
     }
-  }
 
-  return errors;
+    await db
+      .delete(photos_table)
+      .where(sql`${photos_table.dirty} = ${false}`);
+
+    if (errors.length > 0) {
+      logger.error(
+        wrapMultiErrors(errors, "No todas las fotos fueron subidas"),
+      );
+    }
+  } catch (e) {
+    throw transformError(e, "Error subiendo fotos", {
+      stackTrace: Logger.stackTrace,
+    });
+  } finally {
+    pop();
+  }
 }
 
-function uploadPhoto(client: OdooJSONRpc, photo: PhotoSelect, photof: File) {
+async function uploadPhoto(
+  sessionId: string,
+  photo: PhotoSelect,
+  photof: File,
+) {
   const formData = new FormData();
 
   const blob = photof.blob();
@@ -83,15 +83,15 @@ function uploadPhoto(client: OdooJSONRpc, photo: PhotoSelect, photof: File) {
   formData.append(photo.isSign ? "sign" : "file", blob, photo.name);
 
   formData.append("model", photo.model);
-  formData.append("identifier", photo.odooId!);
   formData.append("name", photo.name);
 
-  return ResultAsync.fromPromise(
-    fetch(`${client.url}/technical_support/upload`, {
+  try {
+    Logger.pushStackTrace("upload::uploadPhoto");
+    return fetch(`${odoo.url}/technical_support/upload`, {
       method: "POST",
       headers: {
         "Content-Type": "multipart/form-data",
-        Cookie: `session_id=${client.sessionId}`,
+        Cookie: `session_id=${sessionId}`,
       },
       body: formData,
     }).then(async (r) => {
@@ -99,17 +99,18 @@ function uploadPhoto(client: OdooJSONRpc, photo: PhotoSelect, photof: File) {
       if (!r.ok) {
         throw { type: "HTTPError", message: body } as ApplicationError;
       }
-    }),
-    (e) =>
-      transformError(e, "Error al subir foto", {
-        photo,
-        uploaded: {
-          uri: photof.uri,
-          type: blob.type,
-          name: photof.name,
-        },
-      }),
-  );
+    });
+  } catch (e) {
+    throw transformError(e, "Error al subir foto", {
+      photo,
+      uploaded: {
+        uri: photof.uri,
+        type: blob.type,
+        name: photof.name,
+      },
+      stackTrace: Logger.stackTrace,
+    });
+  }
 }
 
 function batched(photos: PhotoSelect[], chunkSize: number) {
@@ -124,11 +125,7 @@ function batched(photos: PhotoSelect[], chunkSize: number) {
   return batches;
 }
 
-function updateHorphanPhotos(
-  photo: PhotoSelect,
-  photof: File,
-  scope: Database,
-): ResultAsync<[PhotoSelect, File], ApplicationError> {
+async function updateHorphanPhotos(photo: PhotoSelect, photof: File) {
   let mark = false;
 
   if (!photof.exists) {
@@ -145,38 +142,39 @@ function updateHorphanPhotos(
   }
 
   if (!mark) {
-    return okAsync([photo, photof]);
+    return [photo, photof];
   }
 
   logger.warn(`Marcando foto para su elminacion`);
-  return ResultAsync.fromPromise(
-    scope
+
+  try {
+    Logger.pushStackTrace("upload::markUploadedAndDeleteFile");
+    return db
       .update(photos_table)
       .set({ dirty: false })
       .where(sql`${photos_table.id} = ${photo.id}`)
-      .then(() => [photo, photof]),
-    (e) =>
-      transformError(e, "Error al marcar foto para su eliminación", {
-        photo,
-        uploaded: photof,
-      }),
-  );
+      .then(() => [photo, photof]);
+  } catch (e) {
+    throw transformError(e, "Error al marcar foto para su eliminación", {
+      photo,
+      uploaded: photof,
+      stackTrace: Logger.stackTrace,
+    });
+  }
 }
 
-function markUploadedAndDeleteFile(
-  photo: PhotoSelect,
-  photof: File,
-  scope: Database,
-) {
-  return ResultAsync.fromThrowable(
-    async () => {
-      photof.delete();
-      await scope
-        .update(photos_table)
-        .set({ dirty: false })
-        .where(sql`${photos_table.id} = ${photo.id}`);
-    },
-    (e) => transformError(e, "Error al eliminar la foto local", { photo }),
-  )();
+async function markUploadedAndDeleteFile(photo: PhotoSelect, photof: File) {
+  Logger.pushStackTrace("upload::markUploadedAndDeleteFile");
+  try {
+    photof.delete();
+    await db
+      .update(photos_table)
+      .set({ dirty: false })
+      .where(sql`${photos_table.id} = ${photo.id}`);
+  } catch (e) {
+    throw transformError(e, "Error al eliminar la foto local", {
+      photo,
+      stackTrace: Logger.stackTrace,
+    });
+  }
 }
-

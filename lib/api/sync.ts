@@ -1,73 +1,89 @@
 import { Logger } from "@/lib/logger";
 import { countPending } from "@/lib/db/queries/utils";
-import { ApplicationState, globalStore } from "@/lib/store/application-state";
+import { globalStore } from "@/lib/store/application-state";
 import { syncItinerary, syncRegistries, syncResources } from "@/lib/sync";
-import { retriggerJobRegistryStatusComputation, uploadJobRegistries } from "@/lib/upload/job-registry";
-import { uploadActivityRegistries } from "@/lib/upload/activity-registry";
-import { uploadTaskRegistries } from "@/lib/upload/task-registry";
-import {
-  linkRemoteWorktimeRegistry,
-  uploadWorktimeRegistry,
-} from "@/lib/upload/worktime-registry";
+import { uploadRegisters } from "@/lib/upload/index";
 import { uploadPhotos } from "@/lib/upload/photos";
-import { okAsync } from "neverthrow";
 import { isDirty } from "@/lib/sync/last-sync";
-import { transformError } from "../result";
+import { isNetworkError, transformError } from "../result";
 
 const logger = Logger.getLogger("API::SYNC");
 
 export async function syncAll(force: boolean = false) {
   logger.verbose("Iniciando sincronización general");
 
-  const { odooClient, sessionData, isSyncing } = globalStore.getState();
+  const { sessionData, isSyncing } = globalStore.getState();
 
-  if (odooClient == null || sessionData == null || isSyncing) {
+  if (sessionData == null || isSyncing) {
     return;
   }
 
   globalStore.setState({ isSyncing: true });
   logger.verbose("Iniciando descarga de registros");
 
-  const [resourcesDirty, itinerariesDirty, registriesDirty] = await Promise.all(
-    [isDirty("resource"), isDirty("itinerary"), isDirty("registry")],
-  );
+  const pop = Logger.startSubStackTrace("api::syncAll");
+  try {
+    Logger.pushStackTrace("api::syncAll+uploadRegistries");
+    await uploadRegisters(sessionData);
+    logger.success("Subida de registros exitosa");
+    Logger.popStackTrace();
 
-  const result = await (
-    force || resourcesDirty ? syncResources(odooClient, sessionData) : okAsync()
-  )
-    .andThen(() =>
-      force || itinerariesDirty
-        ? syncItinerary(odooClient, sessionData)
-        : okAsync(),
-    )
-    .andThen(() =>
-      force || registriesDirty
-        ? syncRegistries(odooClient, sessionData)
-        : okAsync(),
-    )
-    .map(() => logger.verbose("Descarga de registros exitosa"))
-    .map(() => logger.verbose("Iniciando subida de registros"))
-    .andThen(() => uploadJobRegistries(odooClient, sessionData.uid))
-    .andThen(() => uploadActivityRegistries(odooClient, sessionData.uid))
-    .andThen(() => uploadTaskRegistries(odooClient, sessionData.uid))
-    .andThen(() => uploadWorktimeRegistry(odooClient, sessionData.uid))
-    .andThen(() => linkRemoteWorktimeRegistry(odooClient, sessionData.uid))
-    .andThen(() => retriggerJobRegistryStatusComputation(odooClient, sessionData.uid))
-    .andThen(() => uploadPhotos(odooClient))
-    .map(() => logger.verbose("Subida de registros exitosa"))
-    .mapErr((e) => transformError(e, "Error al sincronizar datos"));
+    logger.info("Iniciando subida de fotos");
+    Logger.pushStackTrace("api::syncAll+uploadPhotos");
+    await uploadPhotos(sessionData);
+    Logger.popStackTrace();
 
-  const newState = {
-    isSyncing: false,
-    conflicts: 0,
-    pendingChanges: await countPending(sessionData.uid).catch(() => 0),
-  } as ApplicationState;
+    Logger.pushStackTrace("api::syncAll+getDirty");
+    const [resourcesDirty, itinerariesDirty, registriesDirty] =
+      await Promise.all([
+        isDirty("resource"),
+        isDirty("itinerary"),
+        isDirty("registry"),
+      ]);
+    Logger.popStackTrace();
 
-  if (result.isErr()) {
-    newState.lastError = result.error;
-  } else {
-    newState.lastMsg = "Sincronización general exitosa";
+    if (force || resourcesDirty) {
+      Logger.pushStackTrace("api::syncAll+syncResources");
+      logger.info("Sincronizando recursos");
+      await syncResources(sessionData);
+      Logger.popStackTrace();
+    }
+
+    if (force || itinerariesDirty) {
+      Logger.pushStackTrace("api::syncAll+syncItineraries");
+      logger.info("Sincronizando itinerarios");
+      await syncItinerary(sessionData);
+      Logger.popStackTrace();
+    }
+
+    if (force || registriesDirty) {
+      Logger.pushStackTrace("api::syncAll+syncRegistries");
+      logger.info("Sincronizando registros");
+      await syncRegistries(sessionData);
+      Logger.popStackTrace();
+    }
+
+    logger.success("Descarga de registros exitosa");
+
+    globalStore.setState({
+      isSyncing: false,
+      conflicts: 0,
+      pendingChanges: await countPending(sessionData.uid).catch(() => 0),
+    });
+
+    logger.success("Sincronización general exitosa");
+  } catch (e) {
+    if (isNetworkError(e)) {
+      logger.warn("Error de red, vuelva a intentarlo más tarde");
+      return;
+    }
+    logger.error(
+      transformError(e, "Error inesperado durante la sincronización general", {
+        stackTrace: Logger.stackTrace,
+      }),
+    );
+  } finally {
+    globalStore.setState({ isSyncing: false });
+    pop();
   }
-
-  globalStore.setState(newState);
 }

@@ -12,6 +12,7 @@ import {
 import CompanySelectionButton from "@/components/screen-specific/job-registry/company-selection-button";
 import VehicleSelectionButton from "@/components/screen-specific/job-registry/vehicle-selection-button";
 import { startJob } from "@/lib/api/job-registry";
+import { syncAll } from "@/lib/api/sync";
 
 const imageStoreKey = "job-registry-new-photos";
 const companyVehicleStoreKey = "job-registry-new-company-vehicle";
@@ -78,6 +79,7 @@ export default function StartJobRegistry() {
       );
 
       if (ok) {
+        queueMicrotask(() => syncAll());
         router.dismissTo("/");
       }
     },

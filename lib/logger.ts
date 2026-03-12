@@ -3,48 +3,44 @@ import * as Sharing from "expo-sharing";
 import { defaultDatabaseDirectory, openDatabaseSync } from "expo-sqlite";
 import { ApplicationError, transformError } from "@/lib/result";
 import { globalStore } from "@/lib/store/application-state";
-import { getAllPendingJobRegistries } from "@/lib/db/queries/job-registry";
-import { getAllPendingActivityRegistries } from "@/lib/db/queries/activity-registries";
-import { getAllPendingTaskRegistries } from "@/lib/db/queries/task-registries";
-import {
-  getAllPendingJobRegistrysOdooIdForUser,
-  getAllPendingWorktimeRegistries,
-} from "@/lib/db/queries/worktime-registry";
 import { getDeviceInfo } from "@/lib/api/device";
+import { DefaultLogger, LogWriter } from "drizzle-orm/logger";
 import Toast from "react-native-toast-message";
+import { JobRegistrySelect } from "./db/schema/job-registry";
+import { ActivityRegistrySelect } from "./db/schema/activity-registry";
+import { TaskRegistrySelect } from "./db/schema/task-registry";
+import { WorktimeRegistrySelect } from "./db/schema/worktime-registry";
 
-export async function exportLogs() {
+export async function exportLogs(
+  dumpedState: {
+    jobRegistry: JobRegistrySelect[];
+    activityRegistry: ActivityRegistrySelect[];
+    taskRegistry: TaskRegistrySelect[];
+    worktimeRegistry: WorktimeRegistrySelect[];
+  } | null,
+) {
   if (!db) {
     return false;
   }
 
-  await exportLogger.verbose("Exportando logs...");
-  await exportLogger.verbose("Snapshot del estado de la aplicación", {
-    ...globalStore.getState(),
-    odooClient: {},
-  });
+  exportLogger.info("Exportando logs...");
+  exportLogger.verbose(
+    "Snapshot del estado de la aplicación",
+    globalStore.getState(),
+  );
 
   try {
-    const { sessionData } = globalStore.getState();
-    if (sessionData != null) {
-      await exportLogger.verbose(
+    if (dumpedState != null) {
+      exportLogger.verbose(
         "Información del dispositivo",
         await getDeviceInfo().catch(() => ({})),
       );
 
-      await exportLogger.verbose("Cambios pendientes por hacer", {
-        jobRegistry: await getAllPendingJobRegistries(sessionData.uid),
-        activityRegistry: await getAllPendingActivityRegistries(
-          sessionData.uid,
-        ),
-        taskRegistry: await getAllPendingTaskRegistries(sessionData.uid),
-        worktimeRegistry: await getAllPendingWorktimeRegistries(
-          sessionData.uid,
-        ),
-        worktimeJobRelation: await getAllPendingJobRegistrysOdooIdForUser(
-          sessionData.uid,
-        ),
-      });
+      exportLogger.verbose("Cambios pendientes por hacer", dumpedState);
+    }
+
+    for (const l of loggers.values()) {
+      l.flushWal();
     }
 
     db!.execSync("PRAGMA wal_checkpoint(FULL);");
@@ -70,13 +66,13 @@ export async function exportLogs() {
 type LoggerLevel = number;
 const loggers: Map<string, Logger> = new Map<string, Logger>();
 export const levels = Object.freeze({
-  info: 0 as LoggerLevel,
-  verbose: 1 as LoggerLevel,
+  verbose: 0 as LoggerLevel,
+  info: 1 as LoggerLevel,
   warn: 2 as LoggerLevel,
   error: 3 as LoggerLevel,
 });
 
-let defaultLevel: LoggerLevel = levels.verbose;
+let defaultLevel: LoggerLevel = __DEV__ ? levels.verbose : levels.info;
 
 export type LogEntry = {
   level: LoggerLevel;
@@ -87,11 +83,15 @@ export type LogEntry = {
 };
 
 export class Logger {
+  static #stackTrace: string[] = [];
+
   #name: string;
+  #wal: { level: string; logger: string; message: string; object: any }[];
   toastOnWarn: boolean;
 
-  private constructor(name: string) {
+  protected constructor(name: string) {
     this.#name = name;
+    this.#wal = [];
     this.toastOnWarn = false;
   }
 
@@ -100,6 +100,29 @@ export class Logger {
       loggers.set(name, new Logger(name));
     }
     return loggers.get(name)!;
+  }
+
+  static getSQLLogger(name: string) {
+    return new DefaultLogger({ writer: new SQLLogger(name) });
+  }
+
+  static formatErrorMessage(error: ApplicationError) {
+    let msg = `${error.message.trimEnd()}`;
+    if ("stackTrace" in error.context) {
+      msg += `${error.context.stackTrace}\n`;
+    }
+    let err = error as Error;
+    while (err.cause instanceof Error) {
+      msg += `\nCaused by: ${err.cause.message}`;
+      if (
+        err.cause instanceof ApplicationError &&
+        "stackTrace" in err.cause.context
+      ) {
+        msg += `${err.cause.context.stackTrace}\n`;
+      }
+      err = err.cause;
+    }
+    return msg;
   }
 
   get name() {
@@ -112,19 +135,90 @@ export class Logger {
     }`;
   }
 
+  #formatError(error: ApplicationError) {
+    let msg = `[${this.#name}]: ${error.message.trimEnd()}`;
+    if ("stackTrace" in error.context) {
+      msg += `${error.context.stackTrace}\n`;
+    }
+    let err = error as Error;
+    while (err.cause instanceof Error) {
+      msg += `\nCaused by: ${err.cause.message}`;
+      if (
+        err.cause instanceof ApplicationError &&
+        "stackTrace" in err.cause.context
+      ) {
+        msg += `${err.cause.context.stackTrace}\n`;
+      }
+      err = err.cause;
+    }
+    return msg;
+  }
+
   #writeDb(level: string, msg: string, obj: any | undefined = undefined) {
     if (!db) {
       return;
     }
 
+    this.#wal.push({
+      level,
+      logger: this.#name,
+      message: msg,
+      object: obj ? JSON.stringify(obj) : null,
+    });
+
+    if (this.#wal.length <= 10) {
+      return;
+    }
+
+    this.flushWal();
+  }
+
+  static startSubStackTrace(st: string) {
+    this.#stackTrace.push(st);
+    return () => {
+      this.popStackTraceTo(st);
+    };
+  }
+
+  static pushStackTrace(st: string) {
+    this.#stackTrace.push(st);
+  }
+
+  static popStackTrace() {
+    this.#stackTrace.pop();
+  }
+
+  private static popStackTraceTo(target: string) {
+    while (this.#stackTrace.length > 0) {
+      const s = this.#stackTrace.pop();
+      if (s === target) {
+        return;
+      }
+    }
+  }
+
+  static get stackTrace() {
+    return this.#stackTrace.reduce((acc, s, index) => {
+      const indentCh = index === 0 ? "" : "└─ ";
+      const indent = index === 0 ? "" : " ".repeat(index);
+      return `${acc}\n${indent}${indentCh}${s}`;
+    }, "");
+  }
+
+  flushWal() {
     try {
-      db.runSync(
-        "INSERT INTO logs (level, logger, message, object) VALUES (?, ?, ?, ?);",
-        level,
-        this.#name,
-        msg,
-        obj ? JSON.stringify(obj) : null,
-      );
+      db.withTransactionSync(() => {
+        for (const entry of this.#wal) {
+          db.runSync(
+            "INSERT INTO logs (level, logger, message, object) VALUES (?, ?, ?, ?);",
+            entry.level,
+            entry.logger,
+            entry.message,
+            entry.object,
+          );
+        }
+        this.#wal = [];
+      });
     } catch {}
   }
 
@@ -133,7 +227,7 @@ export class Logger {
       return;
     }
     console.log(this.#formatMsg(msg, obj));
-    this.#writeDb("INFO", msg, obj);
+    this.#writeDb("VERBOSE", msg, obj);
   }
 
   warn(msg: string, obj: any | undefined = undefined) {
@@ -141,6 +235,15 @@ export class Logger {
       return;
     }
     console.log(this.#formatMsg(msg, obj));
+    if (this.toastOnWarn) {
+      Toast.show({
+        type: "warning",
+        text1: "Advertencia",
+        text2: msg,
+        swipeable: true,
+        autoHide: true,
+      });
+    }
     this.#writeDb("WARN", msg, obj);
   }
 
@@ -148,7 +251,7 @@ export class Logger {
     if (defaultLevel > levels.error) {
       return;
     }
-    console.error(this.#formatMsg(error.message, error));
+    console.error(this.#formatError(error));
     Toast.show({
       type: "error",
       text1: "Error",
@@ -160,7 +263,7 @@ export class Logger {
     this.#writeDb("ERROR", error.message, error);
   }
 
-  info(msg: string, obj: any | undefined = undefined) {
+  success(msg: string, obj: any | undefined = undefined) {
     if (defaultLevel > levels.info) {
       return;
     }
@@ -172,6 +275,30 @@ export class Logger {
       autoHide: true,
     });
     this.#writeDb("INFO", msg, obj);
+  }
+
+  info(msg: string, obj: any | undefined = undefined) {
+    if (defaultLevel > levels.info) {
+      return;
+    }
+    console.log(this.#formatMsg(msg, obj));
+    Toast.show({
+      type: "info",
+      text1: msg,
+      swipeable: true,
+      autoHide: true,
+    });
+    this.#writeDb("INFO", msg, obj);
+  }
+}
+
+class SQLLogger extends Logger implements LogWriter {
+  constructor(name: string) {
+    super(name);
+  }
+
+  write(message: string) {
+    this.verbose(message, {});
   }
 }
 

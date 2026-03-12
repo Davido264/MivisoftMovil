@@ -18,11 +18,15 @@ const initLogger = Logger.getLogger("API::INIT");
 const logger = Logger.getLogger("APP");
 
 export async function init() {
+  const pop = Logger.startSubStackTrace("api::init");
   try {
     await migrate(db, migrations);
   } catch (e) {
-    const err = transformError(e, "Error de migración de base de datos");
+    const err = transformError(e, "Error de migración de base de datos", {
+      stackTrace: Logger.stackTrace,
+    });
     initLogger.error(err);
+    pop();
     return err.message;
   }
 
@@ -30,13 +34,17 @@ export async function init() {
   initLogger.verbose("Iniciando sesión...");
 
   try {
-    const [session, client] = await restoreSession();
+    const session = await restoreSession();
     if (session) {
       await persist(session);
-      globalStore.setState({ sessionData: session, odooClient: client });
+      globalStore.setState({ sessionData: session });
     }
   } catch (e) {
-    logger.error(transformError(e, "Error restaurando o validando la sesión"));
+    logger.error(
+      transformError(e, "Error restaurando o validando la sesión", {
+        stackTrace: Logger.stackTrace,
+      }),
+    );
   }
 
   const userId = globalStore.getState().sessionData?.uid;
@@ -51,6 +59,7 @@ export async function init() {
   });
 
   queueMicrotask(() => syncAll(true));
+  pop();
   return undefined;
 }
 
