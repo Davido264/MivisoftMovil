@@ -53,7 +53,7 @@ export function getAllPendingActivityRegistryUpdates(
     .select()
     .from(activityRegistries_table)
     .where(
-      sql`${activityRegistries_table.odooId} IS NOT NULL AND ${activityRegistries_table.lastmod} > ${activityRegistries_table.lastsync}`,
+      sql`${activityRegistries_table.odooId} IS NOT NULL`,
     )
     .orderBy(sql`${activityRegistries_table.lastmod} DESC`);
 }
