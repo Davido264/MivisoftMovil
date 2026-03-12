@@ -9,6 +9,7 @@ import {
 import { uploadWorktimeRegistry } from "./worktime-registry";
 import {
   createRemoteJobRegistries,
+  retriggerJobRegistryStatusComputation,
   updateRemoteJobRegistries,
 } from "./job-registry";
 import {
@@ -48,6 +49,11 @@ export async function uploadRegisters(sessionData: OdooSession) {
     Logger.pushStackTrace("upload::uploadRegisters+task");
     await updateRemoteTaskRegistries(env, usr.id);
     await createRemoteTaskRegistries(env, usr.id);
+    Logger.popStackTrace();
+
+    logger.verbose("Recomputando relaciones de días y trabajos");
+    Logger.pushStackTrace("upload::uploadRegisters+worktime");
+    await retriggerJobRegistryStatusComputation(env);
     Logger.popStackTrace();
   } catch (e) {
     throw transformError(e, "Error al subir registros", {

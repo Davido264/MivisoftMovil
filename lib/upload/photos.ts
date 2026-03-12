@@ -30,7 +30,7 @@ export async function uploadPhotos(sessionData: OdooSession) {
       .select()
       .from(photos_table)
       .where(
-        sql`${photos_table.odooId} IS NOT NULL AND ${photos_table.dirty} = 1 AND ${photos_table.userId} = ${usr.id}`,
+        sql`${photos_table.odooId} IS NOT NULL`,
       );
     Logger.popStackTrace();
 
