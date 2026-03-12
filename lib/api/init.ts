@@ -25,9 +25,11 @@ export async function init() {
     const err = transformError(e, "Error de migración de base de datos", {
       stackTrace: Logger.stackTrace,
     });
-    initLogger.error(err);
+    logger.warn("Error al migrar la base de datos", err);
+    // initLogger.error(err);
+    // return err.message;
+  } finally {
     pop();
-    return err.message;
   }
 
   initLogger.verbose("Migraciones de base de datos aplicadas correctamente");
