@@ -52,6 +52,9 @@ export function getAllPendingWorktimeRegistries(
   return scope
     .select()
     .from(worktimeRegistries_table)
+    .where(
+      sql`${worktimeRegistries_table.lastmod} > ${worktimeRegistries_table.lastsync} OR ${worktimeRegistries_table.lastsync} IS NULL`,
+    )
     .orderBy(sql`${worktimeRegistries_table.startDate} ASC`);
 }
 

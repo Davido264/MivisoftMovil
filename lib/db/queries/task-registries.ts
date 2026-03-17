@@ -50,7 +50,7 @@ export function getAllPendingTaskRegistryUpdates(
     .select()
     .from(taskRegistries_table)
     .where(
-      sql`${taskRegistries_table.odooId} IS NOT NULL`,
+      sql`${taskRegistries_table.odooId} IS NOT NULL AND ${taskRegistries_table.lastmod} > ${taskRegistries_table.lastsync}`,
     )
     .orderBy(sql`${taskRegistries_table.lastmod} DESC`);
 }

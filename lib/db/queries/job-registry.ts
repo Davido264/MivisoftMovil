@@ -154,7 +154,7 @@ export function getAllPendingJobRegistryUpdates(
     .select()
     .from(jobRegistries_table)
     .where(
-      sql`${jobRegistries_table.odooId} IS NOT NULL`,
+      sql`${jobRegistries_table.odooId} IS NOT NULL AND ${jobRegistries_table.lastmod} > ${jobRegistries_table.lastsync}`,
     )
     .orderBy(sql`${jobRegistries_table.lastmod} DESC`);
 }
