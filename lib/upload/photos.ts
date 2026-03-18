@@ -29,9 +29,7 @@ export async function uploadPhotos(sessionData: OdooSession) {
     const photos = await db
       .select()
       .from(photos_table)
-      .where(
-        sql`${photos_table.odooId} IS NOT NULL`,
-      );
+      .where(sql`${photos_table.odooId} IS NOT NULL`);
     Logger.popStackTrace();
 
     const MAX_PARALLEL_UPLOADS = 3;
@@ -53,9 +51,7 @@ export async function uploadPhotos(sessionData: OdooSession) {
       }
     }
 
-    await db
-      .delete(photos_table)
-      .where(sql`${photos_table.dirty} = ${false}`);
+    await db.delete(photos_table).where(sql`${photos_table.dirty} = ${false}`);
 
     if (errors.length > 0) {
       logger.error(
@@ -84,6 +80,7 @@ async function uploadPhoto(
 
   formData.append("model", photo.model);
   formData.append("name", photo.name);
+  formData.append("identifier", photo.odooId!);
 
   try {
     Logger.pushStackTrace("upload::uploadPhoto");
