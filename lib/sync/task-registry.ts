@@ -19,11 +19,23 @@ import {
 import { transformError } from "@/lib/result";
 import { Logger } from "@/lib/logger";
 
+const logger = Logger.getLogger("task-registry");
+
 export async function reconciliateTaskRegistries(
   remoteEntities: RemoteTaskRegistry[],
 ) {
   try {
     Logger.pushStackTrace("task-registry.reconciliateTaskRegistries");
+    logger.verbose("reconciliateTaskRegistries called", {
+      count: remoteEntities.length,
+      sample: remoteEntities.slice(0, 3),
+    });
+
+    const activityRegistryIds = remoteEntities.map(
+      (r) => r.activity_registry_id,
+    );
+    logger.verbose("activity_registry_ids to check", { activityRegistryIds });
+
     await db.transaction(
       async (tx) => {
         for (const remote of remoteEntities) {
@@ -42,6 +54,10 @@ export async function reconciliateTaskRegistries(
             );
 
             if (activityRegistry === undefined) {
+              logger.verbose("Activity registry not found in local DB", {
+                activity_registry_id: remote.activity_registry_id,
+                remoteTaskRegistry: remote,
+              });
               throw {
                 type: "DatabaseInconsistencyError",
                 message: `No existe una actividad con server Id ${remote.activity_registry_id}`,

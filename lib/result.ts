@@ -134,7 +134,12 @@ export function transformError(
     );
   }
 
-  return new ApplicationError("UnknownError", message ?? errorMessage, context, e);
+  return new ApplicationError(
+    "UnknownError",
+    message ?? errorMessage,
+    context,
+    e,
+  );
 }
 
 export function isNetworkError(error: Error | any) {

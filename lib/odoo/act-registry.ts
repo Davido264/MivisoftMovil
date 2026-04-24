@@ -14,6 +14,10 @@ export async function fetchActivityRegistries(
   env: Environment<Env>,
   jobregs: RemoteJobReg[],
 ) {
+  if (jobregs.length === 0) {
+    return [];
+  }
+
   try {
     const registries = await env[
       "technical_support.activity_registry"

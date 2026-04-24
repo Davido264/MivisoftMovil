@@ -35,7 +35,7 @@ import { Logger } from "@/lib/logger";
 
 const logger = Logger.getLogger("API::SYNC");
 
-const MAX_REGISTRY_AGE = 30 * 24 * 3600 * 1000; // one month
+const MAX_REGISTRY_AGE = 60 * 24 * 3600 * 1000; // two months
 
 export async function syncRegistries(sessionData: OdooSession) {
   const pop = Logger.startSubStackTrace("sync::syncRegistries");

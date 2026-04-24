@@ -11,11 +11,18 @@ import {
 import { transformError } from "@/lib/result";
 import { Logger } from "@/lib/logger";
 
+const logger = Logger.getLogger("job-registry");
+
 export async function reconciliateJobRegistries(
   remoteEntities: RemoteJobReg[],
 ) {
   const pop = Logger.startSubStackTrace("job-registry::reconciliate");
   try {
+    logger.verbose("reconciliateJobRegistries called", {
+      count: remoteEntities.length,
+      sample: remoteEntities.slice(0, 3),
+    });
+
     await db.transaction(
       async (tx) => {
         for (const remote of remoteEntities) {

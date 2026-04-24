@@ -40,8 +40,12 @@ export async function exportLogs(
     }
 
     for (const l of loggers.values()) {
-      l.flushWal();
+      l.flushWalAll();
     }
+
+    db!.execSync("PRAGMA wal_checkpoint(FULL);");
+
+    exportLogger.flushWalAll();
 
     db!.execSync("PRAGMA wal_checkpoint(FULL);");
 
@@ -222,6 +226,13 @@ export class Logger {
     } catch {}
   }
 
+  flushWalAll() {
+    if (this.#wal.length === 0) {
+      return;
+    }
+    this.flushWal();
+  }
+
   verbose(msg: string, obj: any | undefined = undefined) {
     if (defaultLevel > levels.verbose) {
       return;
@@ -310,18 +321,27 @@ export function setGlobalLevel(level: LoggerLevel) {
 const db = openDatabaseSync("logs.db");
 
 const maxLogAge = 86400000; // 1 day
+const cutoffTimestamp =
+  Math.floor(Date.now() / 1000) - Math.floor(maxLogAge / 1000);
 db.execSync(`
 PRAGMA journal_mode=WAL;
 CREATE TABLE IF NOT EXISTS logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   level TEXT,
   logger TEXT,
-  date INTEGER DEFAULT CURRENT_TIMESTAMP,
+  date INTEGER DEFAULT (strftime('%s', 'now')),
   message TEXT,
   object TEXT
 );
-DELETE FROM logs WHERE date < ${new Date().valueOf() - maxLogAge};
+DELETE FROM logs WHERE date < ${cutoffTimestamp};
 INSERT INTO logs (level, logger, message) VALUES ('MARKER','MARKER','------ APPLICATION START ------');
 `);
+
+setInterval(() => {
+  if (!db) return;
+  const intervalCutoff =
+    Math.floor(Date.now() / 1000) - Math.floor(maxLogAge / 1000);
+  db.execSync(`DELETE FROM logs WHERE date < ${intervalCutoff};`);
+}, maxLogAge);
 
 export default levels;

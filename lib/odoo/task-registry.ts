@@ -17,6 +17,10 @@ export async function fetchTaskRegistries(
   env: Environment<Env>,
   actRegistries: RemoteActivityRegistry[],
 ) {
+  if (actRegistries.length === 0) {
+    return [];
+  }
+
   try {
     const registries = await env["technical_support.task_registry"].searchRead(
       [["activity_registry_id", "in", actRegistries.map((i) => i.id!)]],

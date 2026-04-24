@@ -18,11 +18,21 @@ import {
 import { transformError } from "@/lib/result";
 import { Logger } from "@/lib/logger";
 
+const logger = Logger.getLogger("activity-registry");
+
 export async function reconciliateActivityRegistries(
   remoteEntities: RemoteActivityRegistry[],
 ) {
   try {
     Logger.pushStackTrace("activity-registry::reconciliate");
+    logger.verbose("reconciliateActivityRegistries called", {
+      count: remoteEntities.length,
+      sample: remoteEntities.slice(0, 3),
+    });
+
+    const jobRegistryIds = remoteEntities.map((r) => r.job_registry_id);
+    logger.verbose("job_registry_ids to check", { jobRegistryIds });
+
     await db.transaction(
       async (tx) => {
         for (const remote of remoteEntities) {
@@ -38,6 +48,10 @@ export async function reconciliateActivityRegistries(
             );
 
             if (jobRegistry === undefined) {
+              logger.verbose("Job registry not found in local DB", {
+                job_registry_id: remote.job_registry_id,
+                remoteActivityRegistry: remote,
+              });
               throw {
                 type: "DatabaseInconsistencyError",
                 message: `No existe un trabajo con server Id ${remote.job_registry_id}`,
