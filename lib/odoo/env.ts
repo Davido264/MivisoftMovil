@@ -126,8 +126,8 @@ export type Env = {
 };
 
 export const odoo = new Odoo<Env>(
-  // { baseUrl: "https://its.mivilsoft.com", port: 443, db: "QuitoOdooDB" },
-  { baseUrl: "https://44.218.54.13", port: 443, db: "QuitoOdooDB" },
+  { baseUrl: "https://its.mivilsoft.com", port: 443, db: "QuitoOdooDB" },
+  // { baseUrl: "https://44.218.54.13", port: 443, db: "QuitoOdooDB" },
   [
     "res.partner",
     "technical_support.activity_registry",
