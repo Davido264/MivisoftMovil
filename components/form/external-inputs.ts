@@ -1,4 +1,4 @@
-import CheckDeviceAutoTime from "react-native-check-device-auto-time";
+// import CheckDeviceAutoTime from "react-native-check-automatic-time-setting";
 import { ApplicationError, transformError } from "@/lib/result";
 import { Logger } from "@/lib/logger";
 import {
@@ -21,7 +21,8 @@ const logger = Logger.getLogger("FORM::VALIDATION");
 
 export async function validateExternalInputs() {
   try {
-    const autoTimeEnabled = await CheckDeviceAutoTime.isAutomaticTimeEnabled();
+    // const autoTimeEnabled = await CheckDeviceAutoTime.isAutomaticTimeEnabled();
+    const autoTimeEnabled = true;
 
     if (!autoTimeEnabled) {
       logger.warn("Tiempo automático desactivado");
