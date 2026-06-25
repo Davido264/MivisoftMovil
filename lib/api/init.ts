@@ -60,7 +60,9 @@ export async function init() {
       userId == null ? 0 : await countPending(userId).catch(() => 0),
   });
 
-  queueMicrotask(() => syncAll(true));
+  // ponytail: sin force; respeta el TTL de isDirty para no rebajar 2 meses
+  // de datos en cada apertura. La subida de cambios locales corre igual.
+  queueMicrotask(() => syncAll(false));
   pop();
   return undefined;
 }
@@ -95,7 +97,8 @@ export function useInit() {
       globalStore.setState({ isOnline });
 
       if (isOnline === true) {
-        syncAll(true);
+        // ponytail: sin force; cada reconexión no debe rebajar todo de nuevo
+        syncAll(false);
       }
     });
 

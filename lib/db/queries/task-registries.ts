@@ -42,6 +42,20 @@ export function getAllPendingTaskRegistries(
     .orderBy(sql`${taskRegistries_table.lastmod} DESC`);
 }
 
+// Mismo predicado que countPending (creaciones Y updates), para el export.
+export function getPendingTaskRegistries(
+  userId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select()
+    .from(taskRegistries_table)
+    .where(
+      sql`(${taskRegistries_table.odooId} IS NULL OR ${taskRegistries_table.lastsync} < ${taskRegistries_table.lastmod}) AND ${taskRegistries_table.userId} = ${userId}`,
+    )
+    .orderBy(sql`${taskRegistries_table.lastmod} DESC`);
+}
+
 export function getAllPendingTaskRegistryUpdates(
   userId: number,
   scope: Database = db,

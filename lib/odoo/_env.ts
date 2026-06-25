@@ -208,6 +208,10 @@ export class Odoo<
   get url() {
     return this.connection?.url;
   }
+
+  get baseUrl() {
+    return `${this.connectionParams.baseUrl}:${this.connectionParams.port}`;
+  }
 }
 
 // this combined with abortcontroller and OAuth and I make a new library for interacting w/odoo via js/ts

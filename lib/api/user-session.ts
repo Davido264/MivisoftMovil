@@ -9,6 +9,9 @@ import { odoo } from "../odoo/env";
 
 const logger = Logger.getLogger("API::USER-SESSION");
 
+// ponytail: 30s da margen a Odoo lento; el fallback local cubre el resto
+const SESSION_TIMEOUT = 30_000;
+
 export async function restoreSession() {
   const pop = Logger.startSubStackTrace("api::restoreSession");
   try {
@@ -20,30 +23,60 @@ export async function restoreSession() {
       return undefined;
     }
 
-    const validatedSession = await Promise.race([
-      checkSession(session),
-      resolveFallbackAfter(session, 10_000),
-    ]);
+    const endpoint = `${odoo.baseUrl}/web/session/get_session_info`;
+    const started = Date.now();
+    logger.verbose("Validando sesión contra Odoo", {
+      endpoint,
+      uid: session.uid,
+      sid: session.sid ? `${session.sid.slice(0, 6)}…` : null,
+    });
 
-    console.log(validatedSession);
+    // ponytail: la lib de Odoo hace fetch SIN timeout; esta promesa puede quedar
+    // colgada tras el race. La instrumentamos para que registre su resultado
+    // real (status/duración/error) aunque el fallback ya haya ganado.
+    const validate = checkSession(session)
+      .then((s) => {
+        logger.info("Sesión validada", { endpoint, ms: Date.now() - started });
+        return s;
+      })
+      .catch((error) => {
+        const err = transformError(error, "Falló la validación de sesión", {
+          endpoint,
+          ms: Date.now() - started,
+          stackTrace: Logger.stackTrace,
+        });
+        logger.warn("Falló la validación de sesión", {
+          endpoint,
+          ms: Date.now() - started,
+          type: err.type,
+          message: err.message,
+        });
+
+        if (err.type === "NetworkError") {
+          return session;
+        }
+
+        throw err;
+      });
+
+    // ponytail: timer cancelable; sin clearTimeout el warning de timeout se
+    // disparaba SIEMPRE a los 30s aunque la sesión validara en ms.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const fallback = new Promise<OdooSession>((resolve) => {
+      timer = setTimeout(() => {
+        logger.warn("Se alcanzó el timeout antes de completar la solicitud", {
+          timeout: SESSION_TIMEOUT,
+          endpoint,
+        });
+        resolve(session);
+      }, SESSION_TIMEOUT);
+    });
 
     try {
+      const validatedSession = await Promise.race([validate, fallback]);
       return validatedSession || session;
-    } catch (error) {
-      const err = transformError(
-        error,
-        "Error restaurando o validando la sesión",
-        { stackTrace: Logger.stackTrace },
-      );
-
-      if (err.type === "NetworkError") {
-        logger.warn(
-          "Error de red al validar la sesión. Cargando sesión desde almacenamiento local",
-        );
-        return session;
-      }
-
-      throw err;
+    } finally {
+      clearTimeout(timer);
     }
   } finally {
     pop();
@@ -123,20 +156,6 @@ async function checkSession(
     sid: sessionId,
     tz: timezone,
   } as OdooSession;
-}
-
-async function resolveFallbackAfter(
-  fallbackSession: OdooSession,
-  timeout: number,
-) {
-  return new Promise<OdooSession>((resolve) =>
-    setTimeout(() => {
-      logger.warn("Se alcanzó el timeout antes de completar la solicitud", {
-        tiemout: 10000,
-      });
-      resolve(fallbackSession);
-    }, timeout),
-  );
 }
 
 function isCredentials(error: ApplicationError) {

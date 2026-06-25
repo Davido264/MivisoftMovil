@@ -10,6 +10,7 @@ import { JobRegistrySelect } from "./db/schema/job-registry";
 import { ActivityRegistrySelect } from "./db/schema/activity-registry";
 import { TaskRegistrySelect } from "./db/schema/task-registry";
 import { WorktimeRegistrySelect } from "./db/schema/worktime-registry";
+import { PhotoSelect } from "./db/schema/photos";
 
 export async function exportLogs(
   dumpedState: {
@@ -17,6 +18,7 @@ export async function exportLogs(
     activityRegistry: ActivityRegistrySelect[];
     taskRegistry: TaskRegistrySelect[];
     worktimeRegistry: WorktimeRegistrySelect[];
+    photos: PhotoSelect[];
   } | null,
 ) {
   if (!db) {

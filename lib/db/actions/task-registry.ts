@@ -36,10 +36,14 @@ export async function insertTaskRegistries(
         .returning({ id: taskRegistries_table.id })
         .then((r) => r[0].id);
 
-      for (const id of new Set(
-        insert.map((i) => i.activityRegistryId),
-      ).values()) {
-        await updateActivityRegistry(id, {}, false, tx);
+      // ponytail: la cascada que ensucia la actividad (y de ahí el job) solo
+      // aplica a ediciones del usuario; en reconcile (sync=true) se omite.
+      if (!sync) {
+        for (const id of new Set(
+          insert.map((i) => i.activityRegistryId),
+        ).values()) {
+          await updateActivityRegistry(id, {}, false, tx);
+        }
       }
 
       return result;
@@ -63,7 +67,7 @@ export async function updateTaskRegistry(
         .returning({ id: taskRegistries_table.id })
         .then((r) => r[0].id);
 
-      if (update.activityRegistryId) {
+      if (update.activityRegistryId && !sync) {
         await updateActivityRegistry(update.activityRegistryId, {}, false, tx);
       }
       return result;

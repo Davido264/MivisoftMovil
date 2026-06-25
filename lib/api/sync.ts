@@ -1,5 +1,5 @@
 import { Logger } from "@/lib/logger";
-import { countPending } from "@/lib/db/queries/utils";
+import { countPending, pendingBreakdown } from "@/lib/db/queries/utils";
 import { globalStore } from "@/lib/store/application-state";
 import { syncItinerary, syncRegistries, syncResources } from "@/lib/sync";
 import { uploadRegisters } from "@/lib/upload/index";
@@ -65,10 +65,18 @@ export async function syncAll(force: boolean = false) {
 
     logger.success("Descarga de registros exitosa");
 
+    const pendingChanges = await countPending(sessionData.uid).catch(() => 0);
+    if (pendingChanges > 0) {
+      logger.verbose(
+        "Pendientes por tabla",
+        await pendingBreakdown(sessionData.uid).catch(() => null),
+      );
+    }
+
     globalStore.setState({
       isSyncing: false,
       conflicts: 0,
-      pendingChanges: await countPending(sessionData.uid).catch(() => 0),
+      pendingChanges,
     });
 
     logger.success("Sincronización general exitosa");

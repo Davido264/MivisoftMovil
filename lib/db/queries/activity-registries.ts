@@ -45,6 +45,20 @@ export function getAllNewActivityRegistries(
     .orderBy(sql`${activityRegistries_table.lastmod} DESC`);
 }
 
+// Mismo predicado que countPending (creaciones Y updates), para el export.
+export function getPendingActivityRegistries(
+  userId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select()
+    .from(activityRegistries_table)
+    .where(
+      sql`(${activityRegistries_table.odooId} IS NULL OR ${activityRegistries_table.lastsync} < ${activityRegistries_table.lastmod}) AND ${activityRegistries_table.userId} = ${userId}`,
+    )
+    .orderBy(sql`${activityRegistries_table.lastmod} DESC`);
+}
+
 export function getAllPendingActivityRegistryUpdates(
   userId: number,
   scope: Database = db,

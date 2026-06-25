@@ -159,6 +159,18 @@ export function getAllPendingJobRegistryUpdates(
     .orderBy(sql`${jobRegistries_table.lastmod} DESC`);
 }
 
+// Mismo predicado que countPending: creaciones Y updates pendientes. Para el
+// export de soporte, que antes solo mostraba odooId IS NULL.
+export function getPendingJobRegistries(userId: number, scope: Database = db) {
+  return scope
+    .select()
+    .from(jobRegistries_table)
+    .where(
+      sql`(${jobRegistries_table.odooId} IS NULL OR ${jobRegistries_table.lastsync} < ${jobRegistries_table.lastmod}) AND ${jobRegistries_table.userId} = ${userId}`,
+    )
+    .orderBy(sql`${jobRegistries_table.lastmod} DESC`);
+}
+
 const selection = {
   id: jobRegistries_table.id,
   serverId: jobRegistries_table.odooId,

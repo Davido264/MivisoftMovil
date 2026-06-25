@@ -24,111 +24,112 @@ const logger = Logger.getLogger("task-registry");
 export async function reconciliateTaskRegistries(
   remoteEntities: RemoteTaskRegistry[],
 ) {
+  const pop = Logger.startSubStackTrace(
+    "task-registry.reconciliateTaskRegistries",
+  );
   try {
-    Logger.pushStackTrace("task-registry.reconciliateTaskRegistries");
     logger.verbose("reconciliateTaskRegistries called", {
       count: remoteEntities.length,
-      sample: remoteEntities.slice(0, 3),
     });
 
-    const activityRegistryIds = remoteEntities.map(
-      (r) => r.activity_registry_id,
-    );
-    logger.verbose("activity_registry_ids to check", { activityRegistryIds });
+    // ponytail: un registro problemático (actividad inexistente, etc.) se omite
+    // con warning y NO rompe toda la sincronización. Cada insert/update usa su
+    // propio savepoint, así que un fallo aislado no aborta la transacción.
+    const skipped: any[] = [];
 
     await db.transaction(
       async (tx) => {
         for (const remote of remoteEntities) {
-          assert.notNull(remote.id, "remote.id");
+          try {
+            assert.notNull(remote.id, "remote.id");
 
-          let local = await getLocalTaskRegistryFromOdooId(remote.id, tx);
+            let local = await getLocalTaskRegistryFromOdooId(remote.id, tx);
 
-          if (local === undefined) {
-            assert.notNull(
-              remote.activity_registry_id,
-              "remote.activity_registry_id",
-            );
-            const activityRegistry = await getLocalActivityFromRegistryOdooId(
-              remote.activity_registry_id,
-              tx,
-            );
-
-            if (activityRegistry === undefined) {
-              logger.verbose("Activity registry not found in local DB", {
-                activity_registry_id: remote.activity_registry_id,
-                remoteTaskRegistry: remote,
-              });
-              throw {
-                type: "DatabaseInconsistencyError",
-                message: `No existe una actividad con server Id ${remote.activity_registry_id}`,
-              };
-            }
-
-            const task = await getTaskRegistryForActivityRegistryAndTask(
-              activityRegistry.id,
-              remote.task_id,
-            );
-
-            if (task === undefined) {
-              await insertTaskRegistries(
-                [
-                  {
-                    odooId: remote.id,
-                    userId: remote.uid,
-                    completedDate: remote.completed_date
-                      ? parseOdoo(remote.completed_date)
-                      : undefined,
-                    completed: remote.completed,
-                    observation: remote.observation,
-                    taskId: remote.task_id,
-                    activityRegistryId: activityRegistry.id,
-                  },
-                ],
-                true,
+            if (local === undefined) {
+              assert.notNull(
+                remote.activity_registry_id,
+                "remote.activity_registry_id",
+              );
+              const activityRegistry = await getLocalActivityFromRegistryOdooId(
+                remote.activity_registry_id,
                 tx,
               );
-              continue;
+
+              if (activityRegistry === undefined) {
+                skipped.push({
+                  odooId: remote.id,
+                  taskId: remote.task_id,
+                  activityRegistryId: remote.activity_registry_id,
+                  reason: "actividad local inexistente",
+                });
+                logger.warn("Registro de tarea omitido en reconcile", {
+                  odooId: remote.id,
+                  taskId: remote.task_id,
+                  activityRegistryId: remote.activity_registry_id,
+                  reason: "no existe la actividad local",
+                });
+                continue;
+              }
+
+              const task = await getTaskRegistryForActivityRegistryAndTask(
+                activityRegistry.id,
+                remote.task_id,
+              );
+
+              if (task === undefined) {
+                await insertTaskRegistries(
+                  [
+                    {
+                      odooId: remote.id,
+                      userId: remote.uid,
+                      completedDate: remote.completed_date
+                        ? parseOdoo(remote.completed_date)
+                        : undefined,
+                      completed: remote.completed,
+                      observation: remote.observation,
+                      taskId: remote.task_id,
+                      activityRegistryId: activityRegistry.id,
+                    },
+                  ],
+                  true,
+                  tx,
+                );
+                continue;
+              }
+
+              local = task;
             }
 
-            local = task;
-          }
-
-          // local.lastsync ??= new Date();
-          // if (
-          //   local.lastmod <= local.lastsync &&
-          //   remote.lastmod <= local.lastsync
-          // ) {
-          //   continue; // all synced
-          // }
-
-          // if (local.lastmod > local.lastsync) {
-          //   // TODO: For now, local wins always
-          //   continue;
-          // }
-
-          // if (
-          //   local.lastmod > local.lastsync &&
-          //   remote.lastmod > local.lastsync
-          // ) {
-          //   // TODO: Conflict resolution
-          //   continue;
-          // }
-
-          await updateTaskRegistry(
-            local.id,
-            {
+            await updateTaskRegistry(
+              local.id,
+              {
+                odooId: remote.id,
+                userId: remote.uid,
+                completedDate: remote.completed_date
+                  ? parseOdoo(remote.completed_date)
+                  : undefined,
+                completed: remote.completed,
+                observation: remote.observation,
+                taskId: remote.task_id,
+              },
+              true,
+              tx,
+            );
+          } catch (e: any) {
+            skipped.push({
               odooId: remote.id,
-              userId: remote.uid,
-              completedDate: remote.completed_date
-                ? parseOdoo(remote.completed_date)
-                : undefined,
-              completed: remote.completed,
-              observation: remote.observation,
               taskId: remote.task_id,
-            },
-            true,
-            tx,
-          );
+              activityRegistryId: remote.activity_registry_id,
+              reason: e?.message ?? String(e),
+            });
+            logger.warn("Error reconciliando un registro de tarea, se omite", {
+              odooId: remote.id,
+              taskId: remote.task_id,
+              activityRegistryId: remote.activity_registry_id,
+              type: e?.type,
+              error: e?.message ?? String(e),
+            });
+          }
         }
 
         await purgeDeletedTaskRegistries(
@@ -138,10 +139,19 @@ export async function reconciliateTaskRegistries(
       },
       { behavior: transBehavior },
     );
+
+    if (skipped.length > 0) {
+      logger.warn(
+        `Reconciliación de tareas: ${skipped.length}/${remoteEntities.length} registros omitidos`,
+        { skipped: skipped.slice(0, 20) },
+      );
+    }
   } catch (e) {
     throw transformError(e, "Error reconciliando registros de tareas", {
       stackTrace: Logger.stackTrace,
     });
+  } finally {
+    pop();
   }
 }
 

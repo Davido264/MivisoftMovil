@@ -38,3 +38,12 @@ export function getImagesForAll(userId: number, scope: Database = db) {
     .from(photos_table)
     .where(sql`${photos_table.userId} = ${userId}`);
 }
+
+export function getDirtyPhotos(userId: number, scope: Database = db) {
+  return scope
+    .select()
+    .from(photos_table)
+    .where(
+      sql`${photos_table.dirty} = ${true} AND ${photos_table.userId} = ${userId}`,
+    );
+}

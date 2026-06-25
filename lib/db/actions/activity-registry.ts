@@ -34,7 +34,10 @@ export function upsertActivityRegistry(
       .returning({ id: activityRegistries_table.id })
       .then((r) => r[0].id);
 
-    if (insert.jobRegistryId) {
+    // ponytail: solo marcar el job como modificado localmente en ediciones del
+    // usuario (sync=false). En reconcile/descarga (sync=true) no debe ensuciarlo,
+    // o pendingChanges cuenta un job fantasma tras cada sync.
+    if (insert.jobRegistryId && !sync) {
       await updateJobRegistry(insert.jobRegistryId, {}, false, true, tx);
     }
     return returningId;
@@ -61,7 +64,7 @@ export function updateActivityRegistry(
       .where(sql`${activityRegistries_table.id} = ${activityregistryId}`)
       .then((e) => (e.length == 0 ? null : e[0].id));
 
-    if (jobRegistryId != null) {
+    if (jobRegistryId != null && !sync) {
       await updateJobRegistry(jobRegistryId, {}, false, true, tx);
     }
     return returningId;
