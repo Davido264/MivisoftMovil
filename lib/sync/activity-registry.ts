@@ -17,6 +17,8 @@ import {
 } from "@/lib/db/actions/resources";
 import { transformError } from "@/lib/result";
 import { Logger } from "@/lib/logger";
+import { createBreather } from "@/lib/async";
+import { hasLocalChanges } from "@/lib/db/actions/utils";
 
 const logger = Logger.getLogger("activity-registry");
 
@@ -35,7 +37,9 @@ export async function reconciliateActivityRegistries(
 
     await db.transaction(
       async (tx) => {
+        const breathe = createBreather();
         for (const remote of remoteEntities) {
+          await breathe();
           try {
             assert.notNull(remote.id, "remote.id");
 
@@ -82,6 +86,9 @@ export async function reconciliateActivityRegistries(
               );
               continue;
             }
+
+            // Cambios locales sin subir ganan: no pisar con la versión remota.
+            if (hasLocalChanges(local)) continue;
 
             await updateActivityRegistry(
               local.id,

@@ -8,6 +8,7 @@ import {
 } from "@/lib/db/actions/worktime-registry";
 import { transformError } from "@/lib/result";
 import { Logger } from "@/lib/logger";
+import { hasLocalChanges } from "@/lib/db/actions/utils";
 
 export async function reconciliate(remote: RemoteWorktimeRegistry | undefined) {
   const pop = Logger.startSubStackTrace("worktime-registry::reconciliate");
@@ -68,6 +69,11 @@ export async function reconciliate(remote: RemoteWorktimeRegistry | undefined) {
         //   // TODO: Conflict resolution
         //   return;
         // }
+
+        // Cambios locales sin subir ganan: no pisar la jornada local (p.ej. una
+        // abierta) con la versión remota. Esto evita que un sync cierre/altere
+        // la jornada en curso y rompa acciones como registrar actividad.
+        if (hasLocalChanges(local)) return;
 
         await updateWorktimeRegistry(
           local.id,

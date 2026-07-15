@@ -1,7 +1,7 @@
 import db, { transBehavior } from "@/lib/db";
 import { Logger } from "@/lib/logger";
-import { transformError } from "@/lib/result";
-import { storePhotos } from "@/lib/db/actions/photos";
+import { ApplicationError, transformError } from "@/lib/result";
+import { imageExists, storePhotos } from "@/lib/db/actions/photos";
 import { formatDateTime } from "@/lib/date";
 import {
   insertJobRegistry,
@@ -12,6 +12,10 @@ import { countPending } from "@/lib/db/queries/utils";
 import { JobRegistryInsert } from "@/lib/db/schema/job-registry";
 import { addJobRegistryToWorktimeRegistry } from "@/lib/db/actions/worktime-registry";
 import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
+import {
+  countIncompleteActivities,
+  getLatestOpenJobRegistryForUser,
+} from "@/lib/db/queries/job-registry";
 import assert from "@/lib/assert";
 
 const logger = Logger.getLogger("API::JOB-REGISTRY");
@@ -44,6 +48,17 @@ export async function startJob(
   logger.verbose("current job registry", jobRegistry);
 
   try {
+    // No se puede iniciar un nuevo registro si el usuario tiene otro sin
+    // finalizar (endDate IS NULL), pendiente o fallido al cerrar.
+    const open = await getLatestOpenJobRegistryForUser(userId);
+    if (open.length > 0) {
+      throw new ApplicationError(
+        "InvalidInputError",
+        "Ya tienes un registro de trabajo sin finalizar",
+        { openJobId: open[0].id },
+      );
+    }
+
     await db.transaction(
       async (tx) => {
         logger.verbose("Actualizando registro de trabajo");
@@ -122,6 +137,27 @@ export async function finishJob(
   } as Partial<JobRegistryInsert>;
 
   try {
+    // La firma es obligatoria: si no viene o el archivo ya no existe (p.ej. ruta
+    // temporal borrada), no se debe finalizar el trabajo. Se valida ANTES de la
+    // transacción para no dejar el registro a medias.
+    if (!imageExists(sign)) {
+      throw new ApplicationError(
+        "InvalidInputError",
+        "La firma es obligatoria para finalizar el registro",
+        { jobRegistryId },
+      );
+    }
+
+    // No se puede finalizar el trabajo si quedan actividades o tareas pendientes.
+    const incomplete = await countIncompleteActivities(jobRegistryId);
+    if (incomplete > 0) {
+      throw new ApplicationError(
+        "InvalidInputError",
+        "No se puede finalizar: hay actividades o tareas pendientes",
+        { jobRegistryId, incomplete },
+      );
+    }
+
     await db.transaction(
       async (tx) => {
         logger.verbose("Actualizando registro de trabajo");

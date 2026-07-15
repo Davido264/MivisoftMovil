@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { IdNamedList } from "@/components/ui/id-named-list";
 import { getItineraryActivitiesForJobRegistryId } from "@/lib/db/queries/resources";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { Link, Redirect, useLocalSearchParams } from "expo-router";
+import { Link, Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { View } from "react-native";
 import { Text } from "@/components/ui/text";
 import LoadingIndicator from "@/components/ui/loading-indicator";
@@ -17,6 +17,8 @@ export default function RegisterActivity() {
   const { jobregid } = useLocalSearchParams<{
     jobregid?: string;
   }>();
+
+  const router = useRouter();
 
   const { data, error, updatedAt } = useLiveQuery(
     getItineraryActivitiesForJobRegistryId(Number(jobregid ?? "0")),
@@ -36,6 +38,11 @@ export default function RegisterActivity() {
         <IdNamedList.SearchField />
         <IdNamedList.ElementList ElementItem={ElementItem} bottomSafe />
       </IdNamedList>
+      <View className="px-4 pb-safe-offset-4">
+        <Button onPress={() => router.dismissTo("/")}>
+          <Text>Volver al inicio</Text>
+        </Button>
+      </View>
     </View>
   );
 }
@@ -99,7 +106,12 @@ function ElementItem(
           <Link
             href={{
               pathname: "/job-registry/register-activity/form",
-              params: { ...navigationParams, taskStoreKey, imageStoreKey },
+              params: {
+                ...navigationParams,
+                taskStoreKey,
+                imageStoreKey,
+                completeAll: "true",
+              },
             }}
             asChild
           >

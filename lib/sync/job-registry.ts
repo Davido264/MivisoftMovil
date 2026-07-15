@@ -10,6 +10,8 @@ import {
 } from "@/lib/db/actions/job-registry";
 import { transformError } from "@/lib/result";
 import { Logger } from "@/lib/logger";
+import { createBreather } from "@/lib/async";
+import { hasLocalChanges } from "@/lib/db/actions/utils";
 
 const logger = Logger.getLogger("job-registry");
 
@@ -25,7 +27,9 @@ export async function reconciliateJobRegistries(
 
     await db.transaction(
       async (tx) => {
+        const breathe = createBreather();
         for (const remote of remoteEntities) {
+          await breathe();
           assert.notNull(remote.id, "remote.id");
           const local = await getLocalJobRegistryFromOdooId(remote.id, tx);
 
@@ -49,6 +53,9 @@ export async function reconciliateJobRegistries(
             );
             continue;
           }
+
+          // Cambios locales sin subir ganan: no pisar con la versión remota.
+          if (hasLocalChanges(local)) continue;
 
           // local.lastsync ??= new Date(0);
           // if (

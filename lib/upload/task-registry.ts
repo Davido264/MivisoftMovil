@@ -19,6 +19,7 @@ import assert from "@/lib/assert";
 import { isNetworkError, transformError } from "@/lib/result";
 import { Env } from "../odoo/env";
 import { Environment } from "../odoo/_env";
+import { forEachLimit, UPLOAD_CONCURRENCY } from "./concurrent";
 
 const logger = Logger.getLogger("UPLOAD::TASK-REGISTRY");
 
@@ -30,13 +31,12 @@ export async function updateRemoteTaskRegistries(
   logger.verbose("Subiendo registros de tareas pendientes");
   try {
     const tasks = await getAllPendingTaskRegistryUpdates(userId, db);
-    // TODO: we can parallelize some of this requests
-    for (const t of tasks) {
+    await forEachLimit(tasks, UPLOAD_CONCURRENCY, async (t) => {
       const toUpload = prepareTaskRegistryUpdatePayload(t);
       await writeTaskRegistry(env, toUpload.id, toUpload);
-    }
+    });
 
-    db.transaction(
+    await db.transaction(
       async (tx) => {
         await updateTaskRegistryLastSync(
           tasks.map((t) => t.id!),
@@ -65,17 +65,16 @@ export async function createRemoteTaskRegistries(
   try {
     const tasks = await getAllPendingTaskRegistries(userId, db);
 
-    for (const t of tasks) {
+    await forEachLimit(tasks, UPLOAD_CONCURRENCY, async (t) => {
       const toUpload = remotifyTaskRegistry(t);
       const aOdooId = await getActivityRegistryOdooId(toUpload.activity_registry_id, db);
       assert.notNull(aOdooId);
       toUpload.activity_registry_id = aOdooId;
 
-      let odooId: number = 0;
       let retries = 3;
       while (true) {
         try {
-          odooId = await createTaskRegistry(env, toUpload);
+          const odooId = await createTaskRegistry(env, toUpload);
           idMap.set(t.id, odooId);
           break;
         } catch (e) {
@@ -90,7 +89,7 @@ export async function createRemoteTaskRegistries(
           }
         }
       }
-    }
+    });
     Logger.popStackTrace();
 
     await db.transaction(async (tx) => {

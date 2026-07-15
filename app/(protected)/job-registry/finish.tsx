@@ -11,11 +11,12 @@ import { ImagePicker } from "@/components/ui/images";
 import LoadingIndicator from "@/components/ui/loading-indicator";
 import { Text } from "@/components/ui/text";
 import { finishJob } from "@/lib/api/job-registry";
+import { imageExists } from "@/lib/db/actions/photos";
 import { syncAll } from "@/lib/api/sync";
 import { getActivityRegistryCount } from "@/lib/db/queries/activity-registries";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import ViewShot, { captureRef } from "react-native-view-shot";
 
@@ -72,7 +73,11 @@ export default function FinishJobRegistry() {
             quality: 0.8,
           });
 
-      if (sign == null || sign.length === 0) {
+      if (!imageExists(sign)) {
+        Alert.alert(
+          "Firma requerida",
+          "La firma es obligatoria para finalizar el registro",
+        );
         return;
       }
 

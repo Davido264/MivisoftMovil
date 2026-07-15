@@ -15,6 +15,19 @@ export function dateObj(sync: boolean) {
   return sync ? { lastmod: date, lastsync: date } : { lastmod: date };
 }
 
+// ponytail: un registro local tiene cambios SIN subir cuando fue modificado
+// después del último sync (lastmod > lastsync) o nunca se sincronizó (lastsync
+// null). En la reconciliación de descarga NO debe pisarse: gana lo local y se
+// subirá en el próximo sync (esta es la semántica de "cola" — local-first).
+export function hasLocalChanges(row: {
+  lastmod: Date | null;
+  lastsync: Date | null;
+}): boolean {
+  if (row.lastsync == null) return true;
+  if (row.lastmod == null) return false;
+  return row.lastmod.getTime() > row.lastsync.getTime();
+}
+
 export async function purgeStorage(scope: Database = db) {
   return scope.transaction(async (tx) => {
     await db.delete(worktimeRegistries_table);

@@ -47,6 +47,7 @@ export function getItineraryActivitiesForJobRegistryId(
         SELECT COUNT(*)
         FROM ${taskRegistries_table}
         WHERE ${taskRegistries_table.activityRegistryId} = ${activityRegistries_table.id}
+          AND ${taskRegistries_table.completed} = 1
       )`.mapWith(Number),
 
       registerId: activityRegistries_table.id,

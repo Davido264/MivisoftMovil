@@ -9,12 +9,40 @@ import { isNetworkError, transformError } from "../result";
 
 const logger = Logger.getLogger("API::SYNC");
 
-export async function syncAll(force: boolean = false) {
+// ponytail: mutex real e independiente del flag de UI isSyncing, que también
+// mueven checkUpdates/updateApp; usarlo como lock dejaba pasar syncs paralelos.
+// Los disparos concurrentes reutilizan la sincronización en curso (coalesce) en
+// vez de encolar otra, así cada acción no dispara varias sincronizaciones.
+let inFlight: Promise<void> | null = null;
+// ponytail: si llega una petición MIENTRAS otro sync corre, ese sync ya leyó sus
+// pendientes ANTES, así que no subiría lo recién creado. Antes se descartaba la
+// petición y los cambios quedaban sin subir hasta recargar la app. Ahora se marca
+// una pasada extra al terminar: un registro creado durante el sync se sube solo.
+let rerun = false;
+
+export function syncAll(force: boolean = false): Promise<void> {
+  if (inFlight) {
+    rerun = true;
+    return inFlight;
+  }
+  inFlight = (async () => {
+    await runSyncAll(force);
+    while (rerun) {
+      rerun = false;
+      await runSyncAll(false);
+    }
+  })().finally(() => {
+    inFlight = null;
+  });
+  return inFlight;
+}
+
+async function runSyncAll(force: boolean): Promise<void> {
   logger.verbose("Iniciando sincronización general");
 
-  const { sessionData, isSyncing } = globalStore.getState();
+  const { sessionData } = globalStore.getState();
 
-  if (sessionData == null || isSyncing) {
+  if (sessionData == null) {
     return;
   }
 
@@ -85,11 +113,24 @@ export async function syncAll(force: boolean = false) {
       logger.warn("Error de red, vuelva a intentarlo más tarde");
       return;
     }
-    logger.error(
-      transformError(e, "Error inesperado durante la sincronización general", {
-        stackTrace: Logger.stackTrace,
-      }),
+    const err = transformError(
+      e,
+      "Error inesperado durante la sincronización general",
+      { stackTrace: Logger.stackTrace },
     );
+    // El sync es reintentable: los cambios quedan guardados localmente (dirty) y
+    // el próximo sync los vuelve a subir desde donde se quedó. Un fallo del sync
+    // AUTOMÁTICO de fondo (force=false), típicamente por una escritura del
+    // usuario concurrente, NO debe alarmar con un toast de error — se registra y
+    // se reintenta solo. Solo el sync manual/forzado (force=true) muestra el error.
+    if (force) {
+      logger.error(err);
+    } else {
+      logger.warn(
+        "Sincronización en segundo plano falló, se reintentará en el próximo sync",
+        err,
+      );
+    }
   } finally {
     globalStore.setState({ isSyncing: false });
     pop();

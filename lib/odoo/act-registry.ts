@@ -1,5 +1,6 @@
 import { parseOdoo } from "../date";
 import { transformError } from "../result";
+import { Logger } from "@/lib/logger";
 import {
   Env,
   RemoteActivityRegistry,
@@ -9,6 +10,8 @@ import {
 import { Environment } from "./_env";
 
 export { RemoteActivityRegistry, RemoteActivity } from "./env";
+
+const logger = Logger.getLogger("ODOO::ACT-REGISTRY");
 
 export async function fetchActivityRegistries(
   env: Environment<Env>,
@@ -98,7 +101,34 @@ export async function createActivityRegistry(
   record: RemoteActivityRegistry,
 ) {
   try {
-    return await env["technical_support.activity_registry"].create(record);
+    // Búsqueda antes de crear (igual que las tareas): la combinación
+    // job_registry_id + activity_id es única (espeja el unique local). Si el
+    // odooId no se guardó tras un create previo, esto evita crear una actividad
+    // duplicada en Odoo, que a su vez provocaba tareas duplicadas al colgar de
+    // una actividad nueva y vacía.
+    const existing = await env["technical_support.activity_registry"].search([
+      "&",
+      ["job_registry_id", "=", record.job_registry_id],
+      ["activity_id", "=", record.activity_id],
+    ]);
+
+    if (existing.length === 0) {
+      return await env["technical_support.activity_registry"].create(record);
+    }
+
+    if (existing.length > 1) {
+      logger.warn("Actividad duplicada en Odoo, reutilizando la primera", {
+        count: existing.length,
+        job_registry_id: record.job_registry_id,
+        activity_id: record.activity_id,
+      });
+    }
+
+    await env["technical_support.activity_registry"].update(
+      existing[0],
+      record,
+    );
+    return existing[0];
   } catch (error) {
     throw transformError(error, "Error al crear registro de actividad", {
       record,
@@ -106,23 +136,3 @@ export async function createActivityRegistry(
   }
 }
 
-export async function getActivityRegistryOdooIds(
-  env: Environment<Env>,
-  userId: number,
-  uuid: string[],
-) {
-  try {
-    const map = await env["technical_support.activity_registry"].searchRead(
-      [
-        ["uuid", "in", uuid],
-        ["uid", "=", userId],
-      ],
-      ["id", "uuid"],
-    );
-    return new Map(map.map((r) => [r.uuid, r.id])) as Map<string, number>;
-  } catch (error) {
-    throw transformError(error, "Error al obtener id remoto", {
-      function: "getActivityRegistryOdooIds",
-    });
-  }
-}

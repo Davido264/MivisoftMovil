@@ -204,6 +204,7 @@ const selection = {
       SELECT COUNT(*)
       FROM ${taskRegistries_table}
       WHERE ${taskRegistries_table.activityRegistryId} = ${activityRegistries_table.id}
+        AND ${taskRegistries_table.completed} = 1
     ) = (
       SELECT COUNT(*)
       FROM ${tasks_table}
@@ -211,3 +212,44 @@ const selection = {
     ))
   )`.mapWith(Number),
 };
+
+// Cuenta las actividades del itinerario del trabajo que NO están completas:
+// sin registro, o con registro cuyas tareas requeridas no están todas en
+// completed = 1. Misma definición de "completa" que la columna completedActivities.
+export async function countIncompleteActivities(
+  jobRegistryId: number,
+  scope: Database = db,
+) {
+  return scope
+    .select({ count: sql`COUNT(*)`.mapWith(Number) })
+    .from(activities_table)
+    .where(
+      sql`${activities_table.itineraryId} = (
+          SELECT ${jobRegistries_table.itineraryId}
+          FROM ${jobRegistries_table}
+          WHERE ${jobRegistries_table.id} = ${jobRegistryId}
+          LIMIT 1
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM ${activityRegistries_table}
+          WHERE ${activityRegistries_table.activityId} = ${activities_table.id}
+            AND ${activityRegistries_table.jobRegistryId} = ${jobRegistryId}
+            AND (
+              (
+                SELECT COUNT(*) FROM ${tasks_table}
+                WHERE ${tasks_table.activityId} = ${activities_table.id}
+              ) = 0
+              OR (
+                SELECT COUNT(*) FROM ${taskRegistries_table}
+                WHERE ${taskRegistries_table.activityRegistryId} = ${activityRegistries_table.id}
+                  AND ${taskRegistries_table.completed} = 1
+              ) = (
+                SELECT COUNT(*) FROM ${tasks_table}
+                WHERE ${tasks_table.activityId} = ${activities_table.id}
+              )
+            )
+        )`,
+    )
+    .then((r) => r[0].count);
+}

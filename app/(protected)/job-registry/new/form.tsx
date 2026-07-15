@@ -1,5 +1,7 @@
 import { Text } from "@/components/ui/text";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
+import { globalStore } from "@/lib/store/application-state";
+import { getLatestOpenJobRegistryForUser } from "@/lib/db/queries/job-registry";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Send } from "@/components/lib/icons/Send";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
@@ -66,6 +68,18 @@ export default function StartJobRegistry() {
       },
     },
     onSubmit: async ({ value }) => {
+      const uid = globalStore.getState().sessionData?.uid;
+      if (uid != null) {
+        const open = await getLatestOpenJobRegistryForUser(uid);
+        if (open.length > 0) {
+          Alert.alert(
+            "Registro pendiente",
+            "Ya tienes un registro de trabajo sin finalizar",
+          );
+          return;
+        }
+      }
+
       if ((await getLocation()) == null) {
         return;
       }

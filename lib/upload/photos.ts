@@ -1,5 +1,6 @@
 import db from "@/lib/db";
 import { photos_table, PhotoSelect } from "@/lib/db/schema/photos";
+import { backfillPhotoOdooIds } from "@/lib/db/actions/photos";
 import { Logger } from "@/lib/logger";
 import {
   ApplicationError,
@@ -26,6 +27,10 @@ export async function uploadPhotos(sessionData: OdooSession) {
 
     logger.verbose("Iniciando subida de fotos");
     Logger.pushStackTrace("upload::uploadPhotos+collect");
+    // Rellena el odooId de fotos colgadas de un padre ya sincronizado (p.ej.
+    // firma/evidencia agregadas tras finalizar el trabajo), que si no quedan
+    // pendientes para siempre porque el select filtra por odooId IS NOT NULL.
+    await backfillPhotoOdooIds(db);
     const photos = await db
       .select()
       .from(photos_table)
@@ -38,17 +43,19 @@ export async function uploadPhotos(sessionData: OdooSession) {
 
     for (const batch of batches) {
       logger.verbose(`Subiendo lote de ${batch.length} fotos`);
-      for (const [p, pf] of batch) {
-        try {
-          await updateHorphanPhotos(p, pf);
-          await uploadPhoto(sessionId, p, pf);
-          await markUploadedAndDeleteFile(p, pf);
-        } catch (e) {
-          const ctx = { photo: p, uploaded: pf };
-          logger.warn("Error al subir foto", ctx);
-          errors.push(transformError(e, "Error al subir foto", ctx));
-        }
-      }
+      await Promise.all(
+        batch.map(async ([p, pf]) => {
+          try {
+            await updateHorphanPhotos(p, pf);
+            await uploadPhoto(sessionId, p, pf);
+            await markUploadedAndDeleteFile(p, pf);
+          } catch (e) {
+            const ctx = { photo: p, uploaded: pf };
+            logger.warn("Error al subir foto", ctx);
+            errors.push(transformError(e, "Error al subir foto", ctx));
+          }
+        }),
+      );
     }
 
     await db.delete(photos_table).where(sql`${photos_table.dirty} = ${false}`);

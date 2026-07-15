@@ -18,6 +18,7 @@ import {
   getEndDateTimesOdooIdsAndIds,
 } from "@/lib/db/queries/job-registry";
 import { isNetworkError, transformError } from "@/lib/result";
+import { forEachLimit, UPLOAD_CONCURRENCY } from "./concurrent";
 import { updateWorktimeRegistryJobRegistryOdooId } from "../db/actions/worktime-registry";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { formatOdoo } from "../date";
@@ -72,7 +73,7 @@ export async function createRemoteJobRegistries(
     const pending = await getPendingJobRegistryCreations(userId, db);
     const idMap = new Map<number, number>();
 
-    for (const job of pending) {
+    await forEachLimit(pending, UPLOAD_CONCURRENCY, async (job) => {
       const toUpload = remotifyJobRegistry(job);
 
       let retries = 3;
@@ -93,7 +94,7 @@ export async function createRemoteJobRegistries(
           }
         }
       }
-    }
+    });
 
     await db.transaction(async (tx) => {
       for (const [id, odooId] of idMap) {

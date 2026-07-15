@@ -21,15 +21,23 @@ import { useSharedImageListStore } from "@/lib/store/image-list";
 import { syncAll } from "@/lib/api/sync";
 
 export default function RegisterActivityForm() {
-  const { actid, actName, jobregid, actregid, taskStoreKey, imageStoreKey } =
-    useLocalSearchParams<{
-      actid: string;
-      actName: string;
-      jobregid: string;
-      actregid: string;
-      taskStoreKey?: string;
-      imageStoreKey?: string;
-    }>();
+  const {
+    actid,
+    actName,
+    jobregid,
+    actregid,
+    taskStoreKey,
+    imageStoreKey,
+    completeAll,
+  } = useLocalSearchParams<{
+    actid: string;
+    actName: string;
+    jobregid: string;
+    actregid: string;
+    taskStoreKey?: string;
+    imageStoreKey?: string;
+    completeAll?: string;
+  }>();
 
   assert.notNull(taskStoreKey);
   assert.notNull(imageStoreKey);
@@ -89,9 +97,16 @@ export default function RegisterActivityForm() {
         value.comment,
         value.tasks,
         value.photos,
+        completeAll === "true",
       );
 
       if (ok) {
+        // El store de tareas usa una key constante y se cachea entre entradas;
+        // si no se limpia, las tareas ya guardadas se re-envían en el siguiente
+        // guardado y chocan con el upsert. Las ya completadas se vuelven a
+        // mostrar desde la BD (getActivityTasks) al re-entrar.
+        taskStore.setState({ tasks: [] });
+        imageStore.setState({ photos: [] });
         queueMicrotask(() => syncAll());
         router.dismissTo("/");
       }

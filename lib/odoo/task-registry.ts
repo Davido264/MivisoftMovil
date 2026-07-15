@@ -104,11 +104,19 @@ export async function createTaskRegistry(
       ["task_id", "=", record.task_id],
     ]);
 
-    if (existing.length !== 1) {
-      logger.warn(
-        "No se ha encontrado una tarea o se encontraron varias, creando",
-      );
+    // Solo se crea si NO existe ninguna. Si ya hay 1+ (incluso duplicados
+    // previos), se reutiliza la primera y se actualiza: nunca se añade otra,
+    // así el sync es idempotente y no amplifica duplicados ya creados.
+    if (existing.length === 0) {
       return await env["technical_support.task_registry"].create(record);
+    }
+
+    if (existing.length > 1) {
+      logger.warn("Tarea duplicada en Odoo, reutilizando la primera", {
+        count: existing.length,
+        activity_registry_id: record.activity_registry_id,
+        task_id: record.task_id,
+      });
     }
 
     await env["technical_support.task_registry"].update(existing[0], record);
@@ -120,23 +128,3 @@ export async function createTaskRegistry(
   }
 }
 
-export async function getTaskRegistryOdooIds(
-  env: Environment<Env>,
-  userId: number,
-  uuid: string[],
-) {
-  try {
-    const map = await env["technical_support.task_registry"].searchRead(
-      [
-        ["uuid", "in", uuid],
-        ["uid", "=", userId],
-      ],
-      ["id", "uuid"],
-    );
-    return new Map(map.map((r) => [r.uuid, r.id])) as Map<string, number>;
-  } catch (error) {
-    throw transformError(error, "Error al obtener id remoto", {
-      function: "getTaskRegistryOdooIds",
-    });
-  }
-}

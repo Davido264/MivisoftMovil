@@ -25,7 +25,13 @@ export async function insertTaskRegistries(
         .insert(taskRegistries_table)
         .values(insert.map((i) => ({ ...i, ...dateObj(sync) })))
         .onConflictDoUpdate({
-          target: taskRegistries_table.id,
+          // El conflicto real es el índice único (activityRegistryId, taskId),
+          // no la PK id: al re-guardar una actividad la tarea ya existente choca
+          // por esa combinación. Apuntar a id no lo captura → UNIQUE constraint.
+          target: [
+            taskRegistries_table.activityRegistryId,
+            taskRegistries_table.taskId,
+          ],
           set: {
             observation: sql`excluded.observation`,
             completed: sql`excluded.completed`,

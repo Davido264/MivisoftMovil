@@ -11,6 +11,7 @@ import { ActivityRegistryInsert } from "@/lib/db/schema/activity-registry";
 import { PhotoInsert } from "@/lib/db/schema/photos";
 import { TaskRegistryInsert } from "@/lib/db/schema/task-registry";
 import { getCurrentWorktimeRegistryForUser } from "@/lib/db/queries/worktime-registry";
+import { getActivityTasks } from "@/lib/db/queries/resources";
 import assert from "@/lib/assert";
 import { addJobRegistryToWorktimeRegistry } from "@/lib/db/actions/worktime-registry";
 
@@ -29,6 +30,7 @@ export async function registerActivity(
   observation: string,
   tasks: TaskRegistry[],
   photos: string[],
+  completeAll: boolean = false,
 ) {
   const pop = Logger.startSubStackTrace("activity-registry::registerActivity");
   const { sessionData } = globalStore.getState();
@@ -70,6 +72,19 @@ export async function registerActivity(
 
         logger.verbose("Almacenando imágenes");
         await storePhotos(photoRegistries, tx);
+
+        // Guardado directo (sin entrar a seleccionar tareas): se marca la
+        // actividad como completa => todas sus tareas se registran completas.
+        // upsert sobre (activityRegistryId, taskId) preserva las ya existentes
+        // y conserva su observación; no duplica.
+        if (completeAll) {
+          const activityTasks = await getActivityTasks(activityId, id, tx);
+          tasks = activityTasks.map((t) => ({
+            taskId: t.id,
+            completedDate: selectedDateTime,
+            observation: t.observation,
+          }));
+        }
 
         if (tasks.length !== 0) {
           const taskInsert = tasks.map(

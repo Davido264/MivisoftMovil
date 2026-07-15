@@ -92,7 +92,10 @@ function JobRegistryOverViewInternal() {
       </CardContent>
       <Separator className="mb-4" />
       <JobRegistryCard.Actions
-        canFinish={item.completedActivities !== 0}
+        canFinish={
+          item.totalActivities > 0 &&
+          item.completedActivities === item.totalActivities
+        }
         endHref={{
           pathname: "/job-registry/finish",
           params: { jobregid: item.id.toString() },
