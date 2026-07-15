@@ -6,7 +6,10 @@ import {
   createRemoteActivityRegistries,
   updateRemoteActivityRegistries,
 } from "./activity-registry";
-import { uploadWorktimeRegistry } from "./worktime-registry";
+import {
+  linkRemoteWorktimeRegistry,
+  uploadWorktimeRegistry,
+} from "./worktime-registry";
 import {
   createRemoteJobRegistries,
   retriggerJobRegistryStatusComputation,
@@ -37,6 +40,13 @@ export async function uploadRegisters(sessionData: OdooSession) {
     Logger.pushStackTrace("upload::uploadRegisters+job");
     await updateRemoteJobRegistries(env, usr.id);
     await createRemoteJobRegistries(env, usr.id);
+    Logger.popStackTrace();
+
+    // Enlaza los trabajos ya subidos (con odooId) a la jornada del día = apartado
+    // "trabajos realizados". Va después de crear los jobs para que tengan odooId.
+    logger.verbose("Enlazando trabajos a la jornada");
+    Logger.pushStackTrace("upload::uploadRegisters+linkWorktime");
+    await linkRemoteWorktimeRegistry(env, usr.id);
     Logger.popStackTrace();
 
     logger.verbose("Subiendo registros de actividad pendientes");
