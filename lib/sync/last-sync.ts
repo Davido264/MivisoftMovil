@@ -26,6 +26,12 @@ export async function isDirty(key: CacheKey) {
   return lastSync == null || Date.now() - lastSync.getTime() > frecuencyms;
 }
 
+// Fecha de la última sincronización exitosa de esta clave, para fetch
+// incremental (write_date > estaFecha). null = nunca sincronizado => full.
+export async function getLastSyncDate(key: CacheKey) {
+  return getLastSync(cacheKeys[key]);
+}
+
 async function getLastSync(lastSyncKey: string) {
   return AsyncStorage.getItem(lastSyncKey)
     .then((d) => (d != null ? new Date(d) : null))

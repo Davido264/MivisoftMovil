@@ -5,7 +5,7 @@ import {
   RemoteTask,
 } from "@/lib/odoo/env";
 import { Environment } from "./_env";
-import { parseOdoo } from "@/lib/date";
+import { formatOdoo, parseOdoo } from "@/lib/date";
 import { Logger } from "@/lib/logger";
 import { transformError } from "@/lib/result";
 
@@ -16,14 +16,24 @@ const logger = Logger.getLogger("");
 export async function fetchTaskRegistries(
   env: Environment<Env>,
   actRegistries: RemoteActivityRegistry[],
+  // Fetch incremental: si se pasa `since`, solo trae tareas modificadas después
+  // de esa fecha (write_date). El `uid` se sigue derivando del padre usando
+  // TODO el set de actividades, así que sirve aunque el padre no haya cambiado.
+  since?: Date,
 ) {
   if (actRegistries.length === 0) {
     return [];
   }
 
   try {
+    const domain: any[] = [
+      ["activity_registry_id", "in", actRegistries.map((i) => i.id!)],
+    ];
+    if (since) {
+      domain.push(["write_date", ">", formatOdoo(since)]);
+    }
     const registries = await env["technical_support.task_registry"].searchRead(
-      [["activity_registry_id", "in", actRegistries.map((i) => i.id!)]],
+      domain,
       [
         "id",
         "activity_registry_id",
@@ -56,6 +66,25 @@ export async function fetchTaskRegistries(
     );
   } catch (error) {
     throw transformError(error, "Error al obtener registros de tareas");
+  }
+}
+
+// Solo los IDs de TODAS las tareas de la ventana (sin filtrar por write_date).
+// Necesario para el purge: borra los locales cuyo odooId ya no existe remoto, y
+// eso requiere el set COMPLETO — pasarle solo los cambiados borraría los demás.
+export async function fetchTaskRegistryIds(
+  env: Environment<Env>,
+  actRegistries: RemoteActivityRegistry[],
+): Promise<number[]> {
+  if (actRegistries.length === 0) {
+    return [];
+  }
+  try {
+    return await env["technical_support.task_registry"].search([
+      ["activity_registry_id", "in", actRegistries.map((i) => i.id!)],
+    ]);
+  } catch (error) {
+    throw transformError(error, "Error al obtener IDs de registros de tareas");
   }
 }
 

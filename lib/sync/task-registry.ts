@@ -25,6 +25,10 @@ const logger = Logger.getLogger("task-registry");
 
 export async function reconciliateTaskRegistries(
   remoteEntities: RemoteTaskRegistry[],
+  // IDs remotos vigentes para el purge. Con fetch incremental `remoteEntities`
+  // trae SOLO lo cambiado, pero el purge necesita el set completo; si se omite,
+  // se asume que `remoteEntities` ya es completo (comportamiento anterior).
+  purgeIds: number[] = remoteEntities.map((i) => i.id!),
 ) {
   const pop = Logger.startSubStackTrace(
     "task-registry.reconciliateTaskRegistries",
@@ -32,6 +36,7 @@ export async function reconciliateTaskRegistries(
   try {
     logger.verbose("reconciliateTaskRegistries called", {
       count: remoteEntities.length,
+      purgeCount: purgeIds.length,
     });
 
     // ponytail: un registro problemático (actividad inexistente, etc.) se omite
@@ -139,10 +144,7 @@ export async function reconciliateTaskRegistries(
           }
         }
 
-        await purgeDeletedTaskRegistries(
-          remoteEntities.map((i) => i.id!),
-          tx,
-        );
+        await purgeDeletedTaskRegistries(purgeIds, tx);
       },
       { behavior: transBehavior },
     );

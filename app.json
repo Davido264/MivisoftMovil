@@ -3,7 +3,7 @@
     "owner": "los-papus-de-mivilsoft",
     "name": "ms-techcnical-support",
     "slug": "ms-technical-support",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mstechnicalsupport",

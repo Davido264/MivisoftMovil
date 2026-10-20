@@ -15,7 +15,11 @@ import {
   fetchActivityRegistries,
 } from "@/lib/odoo/act-registry";
 import { odoo, RemoteActivity, RemoteItinerary } from "@/lib/odoo/env";
-import { fetchTaskRegistries, fetchTasks } from "@/lib/odoo/task-registry";
+import {
+  fetchTaskRegistries,
+  fetchTaskRegistryIds,
+  fetchTasks,
+} from "@/lib/odoo/task-registry";
 import { fetchJobRegistries } from "@/lib/odoo/job-registry";
 import { reconciliateJobRegistries } from "@/lib/sync/job-registry";
 import {
@@ -30,14 +34,36 @@ import { formatDateTime, normalizedDate } from "@/lib/date";
 import { fetchLatestWorktimeRegistry } from "@/lib/odoo/worktime-registry";
 import { reconciliate as reconliciateWorktimeRegistries } from "@/lib/sync/worktime-registry";
 import { OdooSession } from "@/lib/db/schema/user-session";
-import { updateLastSync } from "@/lib/sync/last-sync";
+import { getLastSyncDate, updateLastSync } from "@/lib/sync/last-sync";
 import { Logger } from "@/lib/logger";
 
 const logger = Logger.getLogger("API::SYNC");
 
+// ponytail: medición temporal para localizar el cuello de botella de
+// syncRegistries (fetch vs cada reconciliación). Quitar cuando ya sepamos.
+async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  const start = Date.now();
+  try {
+    return await fn();
+  } finally {
+    logger.verbose(`⏱ ${label}: ${((Date.now() - start) / 1000).toFixed(1)}s`);
+  }
+}
+
 const MAX_REGISTRY_AGE = 60 * 24 * 3600 * 1000; // two months
 
-export async function syncRegistries(sessionData: OdooSession) {
+// Margen de solape para el fetch incremental de tareas: reprocesa ~15 min
+// extra por si el reloj del dispositivo va adelantado respecto al servidor
+// (write_date es hora de servidor). Reprocesar un poco es idempotente y barato;
+// perder un cambio no lo es.
+const INCREMENTAL_MARGIN_MS = 15 * 60 * 1000;
+
+export async function syncRegistries(
+  sessionData: OdooSession,
+  // force = sync manual: ignora el incremental y reconcilia TODO (válvula de
+  // reparación si el incremental alguna vez se desincroniza).
+  force: boolean = false,
+) {
   const pop = Logger.startSubStackTrace("sync::syncRegistries");
 
   try {
@@ -49,25 +75,56 @@ export async function syncRegistries(sessionData: OdooSession) {
     );
     Logger.popStackTrace();
 
+    // Fetch incremental de tareas: solo las modificadas desde el último sync.
+    // null (primer sync) o force => full. Las tareas son la tabla hoja y la más
+    // grande (miles), así que acá está el grueso del costo de reconciliación.
+    const lastSync = force ? null : await getLastSyncDate("registry");
+    const tasksSince = lastSync
+      ? new Date(lastSync.getTime() - INCREMENTAL_MARGIN_MS)
+      : undefined;
+
     logger.verbose(
-      `Iniciando sincronización de registros desde ${formatDateTime(maxAge)}`,
+      `Iniciando sincronización de registros desde ${formatDateTime(maxAge)}` +
+        (tasksSince
+          ? ` (tareas incrementales desde ${formatDateTime(tasksSince)})`
+          : " (tareas: full)"),
     );
 
     Logger.pushStackTrace("sync::syncRegistries+fetch");
-    const [j, w] = await Promise.all([
-      fetchJobRegistries(env, maxAge),
-      fetchLatestWorktimeRegistry(env, sessionData.uid, sessionData.tz),
-    ]);
+    const [j, w] = await timed("fetch jobs+worktime", () =>
+      Promise.all([
+        fetchJobRegistries(env, maxAge),
+        fetchLatestWorktimeRegistry(env, sessionData.uid, sessionData.tz),
+      ]),
+    );
 
-    const a = await fetchActivityRegistries(env, j);
-    const t = await fetchTaskRegistries(env, a);
+    const a = await timed("fetch activities", () =>
+      fetchActivityRegistries(env, j),
+    );
+    // Cambiadas (para reconciliar) + set completo de IDs (para el purge).
+    const t = await timed("fetch tasks (changed)", () =>
+      fetchTaskRegistries(env, a, tasksSince),
+    );
+    const taskIds = await timed("fetch task ids (purge)", () =>
+      fetchTaskRegistryIds(env, a),
+    );
     Logger.popStackTrace();
 
+    logger.info(
+      `Conteos: jobs=${j.length}, activities=${a.length}, tasks cambiadas=${t.length}/${taskIds.length}`,
+    );
+
     Logger.pushStackTrace("sync::syncRegistries+store");
-    await reconliciateWorktimeRegistries(w);
-    await reconciliateJobRegistries(j);
-    await reconciliateActivityRegistries(a);
-    await reconciliateTaskRegistries(t);
+    await timed("reconcile worktime", () => reconliciateWorktimeRegistries(w));
+    await timed(`reconcile jobs (${j.length})`, () =>
+      reconciliateJobRegistries(j),
+    );
+    await timed(`reconcile activities (${a.length})`, () =>
+      reconciliateActivityRegistries(a),
+    );
+    await timed(`reconcile tasks (${t.length}/${taskIds.length})`, () =>
+      reconciliateTaskRegistries(t, taskIds),
+    );
     await updateLastSync("registry");
     Logger.popStackTrace();
 

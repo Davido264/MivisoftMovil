@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import Constants from "expo-constants";
 import { BottomSheetModal as BSM } from "@gorhom/bottom-sheet";
 import BottomSheetModal from "@/components/ui/bottom-sheet-modal";
 import { useRouter } from "expo-router";
@@ -109,6 +110,9 @@ export default function Options() {
           >
             <Text className="text-destructive">Cerrar Sesión</Text>
           </Button>
+          <Text className="text-center text-muted-foreground text-sm mt-auto">
+            Versión {Constants.expoConfig?.version}
+          </Text>
         </View>
       </BottomSheetModal>
     </>
