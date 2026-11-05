@@ -20,7 +20,7 @@ import assert from "@/lib/assert";
 import { isNetworkError, transformError } from "../result";
 import { Env } from "../odoo/env";
 import { Environment } from "../odoo/_env";
-import { forEachLimit, UPLOAD_CONCURRENCY } from "./concurrent";
+import { forEachByParent } from "./concurrent";
 
 const logger = Logger.getLogger("UPLOAD::ACTIVITY-REGISTRY");
 
@@ -34,7 +34,7 @@ export async function updateRemoteActivityRegistries(
   logger.verbose("Actualizando registros de actividad modificados");
   try {
     const acts = await getAllPendingActivityRegistryUpdates(userId, db);
-    await forEachLimit(acts, UPLOAD_CONCURRENCY, async (act) => {
+    await forEachByParent(acts, (act) => act.jobRegistryId, async (act) => {
       const toUpload = prepareActivityRegistryUpdatePayload(act);
       await writeActivityRegistry(env, toUpload.id, toUpload);
     });
@@ -71,7 +71,7 @@ export async function createRemoteActivityRegistries(
     Logger.popStackTrace();
 
     Logger.pushStackTrace("upload::uploadActivityRegistries+upload");
-    await forEachLimit(acts, UPLOAD_CONCURRENCY, async (act) => {
+    await forEachByParent(acts, (act) => act.jobRegistryId, async (act) => {
       const toUpload = remotifyActivityRegistry(act);
 
       const jOdooId = await getJobRegistryOdooId(toUpload.job_registry_id);

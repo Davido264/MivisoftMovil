@@ -74,7 +74,7 @@ export type RemoteUser = {
   name: string;
   company: string;
   tz: string;
-  groups_id: number;
+  all_group_ids: number;
   company_id: undefined;
 };
 
@@ -127,6 +127,8 @@ export type Env = {
 
 export const odoo = new Odoo<Env>(
   { baseUrl: "https://its.mivilsoft.com", port: 443, db: "QuitoOdooDB" },
+  // { baseUrl: "http://190.63.136.152", port: 8082, db: "QuitoOdooDB" }, // PRODUCCIÓN
+  // { baseUrl: "http://192.168.100.198", port: 8069, db: "QuitoOdooDB20" }, // TEMPORAL: pruebas
   // { baseUrl: "https://44.218.54.13", port: 443, db: "QuitoOdooDB" },
   [
     "res.partner",

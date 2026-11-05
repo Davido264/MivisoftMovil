@@ -19,7 +19,7 @@ import assert from "@/lib/assert";
 import { isNetworkError, transformError } from "@/lib/result";
 import { Env } from "../odoo/env";
 import { Environment } from "../odoo/_env";
-import { forEachLimit, UPLOAD_CONCURRENCY } from "./concurrent";
+import { forEachByParent } from "./concurrent";
 
 const logger = Logger.getLogger("UPLOAD::TASK-REGISTRY");
 
@@ -31,7 +31,7 @@ export async function updateRemoteTaskRegistries(
   logger.verbose("Subiendo registros de tareas pendientes");
   try {
     const tasks = await getAllPendingTaskRegistryUpdates(userId, db);
-    await forEachLimit(tasks, UPLOAD_CONCURRENCY, async (t) => {
+    await forEachByParent(tasks, (t) => t.activityRegistryId, async (t) => {
       const toUpload = prepareTaskRegistryUpdatePayload(t);
       await writeTaskRegistry(env, toUpload.id, toUpload);
     });
@@ -65,7 +65,7 @@ export async function createRemoteTaskRegistries(
   try {
     const tasks = await getAllPendingTaskRegistries(userId, db);
 
-    await forEachLimit(tasks, UPLOAD_CONCURRENCY, async (t) => {
+    await forEachByParent(tasks, (t) => t.activityRegistryId, async (t) => {
       const toUpload = remotifyTaskRegistry(t);
       const aOdooId = await getActivityRegistryOdooId(toUpload.activity_registry_id, db);
       assert.notNull(aOdooId);

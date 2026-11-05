@@ -91,7 +91,7 @@ const DefaltListItemMemo = memo(DefaultListItem);
 
 function ElementList<T extends IdNamedObject>({
   ElementItem,
-  estimatedItemSize,
+  estimatedItemSize = 88,
   contentContainerClassName,
   bottomSafe = false,
 }: ElementListProps<T>) {
@@ -119,7 +119,7 @@ function ElementList<T extends IdNamedObject>({
   return (
     <FlashList
       data={filteredData}
-      estimatedItemSize={ElementItem ? estimatedItemSize : undefined}
+      estimatedItemSize={estimatedItemSize}
       keyExtractor={(i) => `${i.id}`}
       contentContainerClassName={contentContainerClassName}
       ListFooterComponent={Footer}

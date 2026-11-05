@@ -9,7 +9,7 @@ const groupIds = [50, 51];
 export async function fetchUsers(env: Environment<Env>) {
   try {
     const users = await env["res.users"].searchRead(
-      [["groups_id", "in", groupIds]],
+      [["all_group_ids", "in", groupIds]],
       ["id", "name", "company_id", "tz"],
     );
     return users.map(

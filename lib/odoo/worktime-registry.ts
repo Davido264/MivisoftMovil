@@ -1,5 +1,5 @@
 import assert from "@/lib/assert";
-import { computeYYYYMMDD, dateFromYYYYMMDD, parseOdoo } from "@/lib/date";
+import { computeYYYYMMDD, dateFromYYYYMMDD, formatOdoo, parseOdoo } from "@/lib/date";
 import { transformError } from "../result";
 import { Env, RemoteWorktimeRegistry } from "./env";
 import { Environment } from "./_env";
@@ -137,8 +137,8 @@ export async function linkJobRegistryToWorktimeRegistry(
       "technical_support.worktime_registry"
     ].search([
       ["user_id", "=", userId],
-      ["start_datetime", ">=", startDate],
-      ["start_datetime", "<", endDate],
+      ["start_datetime", ">=", formatOdoo(startDate)],
+      ["start_datetime", "<", formatOdoo(endDate)],
     ]);
 
     if (worktimeRegistryId.length === 0) {
